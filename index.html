@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHARACTER CLASH（クラウド版）</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+    background:linear-gradient(180deg,#243450,#11151f);background-size:100% 220%;animation:bgshift 18s ease-in-out infinite alternate;
+    color:#eaeef5;min-height:100vh;padding:10px;-webkit-user-select:none;user-select:none;}
+  @keyframes bgshift{0%{background-position:0% 0%}100%{background-position:0% 100%}}
+  h1{text-align:center;font-size:20px;letter-spacing:2px;color:#ffd874;margin:6px 0;}
+  button{background:#ffd874;color:#1a1a1a;border:none;border-radius:8px;padding:10px 16px;font-weight:bold;font-size:14px;cursor:pointer;}
+  button.blue{background:#4a90d9;color:#fff;} button.green{background:#3aa86a;color:#fff;} button.gray{background:#777;color:#fff;}
+  button:disabled{background:#555;color:#999;cursor:default;}
+  input{background:#1a2030;border:1px solid #5b6b88;color:#eaeef5;border-radius:6px;padding:9px 10px;font-size:14px;}
+  .overlay{position:fixed;inset:0;background:rgba(8,12,20,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:50;padding:20px;overflow:auto;}
+  .status{font-size:13px;white-space:pre-wrap;line-height:1.6;text-align:center;}
+  .err{color:#ff8a8a;} .ok{color:#7bff9b;} .run{color:#ffd874;} .muted{color:#9aa6b8;font-size:12px;}
+
+  /* 盤面 */
+  .sidebar{display:flex;justify-content:space-between;align-items:center;gap:8px;background:rgba(0,0,0,.25);border-radius:10px;padding:6px 12px;margin:4px auto;max-width:1000px;}
+  .sidebar.facetarget{box-shadow:0 0 0 3px #ff6b6b,0 0 14px #ff6b6b;cursor:crosshair;}
+  .stat{font-size:14px;font-weight:bold;} .stat .num{font-size:18px;}
+  .life{color:#ff7b7b;} .energy{color:#7bdcff;} .deck{color:#cdd3dd;}
+  .board{display:flex;gap:8px;justify-content:center;min-height:150px;padding:8px;border-radius:12px;align-items:center;flex-wrap:wrap;max-width:1000px;margin:0 auto;}
+  .board.opp{background:rgba(120,40,40,.12);} .board.act{background:rgba(40,90,140,.14);}
+  .slot{width:96px;height:140px;border:2px dashed rgba(255,255,255,.12);border-radius:10px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:11px;}
+  .card{width:96px;height:140px;border-radius:10px;position:relative;background:linear-gradient(160deg,#3a4a66,#222b3c);border:2px solid #5b6b88;box-shadow:0 3px 6px rgba(0,0,0,.4);cursor:pointer;padding:4px;display:flex;flex-direction:column;transition:transform .1s;}
+  .card:hover{transform:translateY(-3px);}
+  .card.skill{background:linear-gradient(160deg,#5a4a6e,#2e2440);border-color:#9b78c0;}
+  .card .cost{position:absolute;top:-8px;left:-8px;width:24px;height:24px;border-radius:50%;background:#7bdcff;color:#0a2030;font-weight:bold;font-size:14px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;}
+  .card .nm{font-size:10px;font-weight:bold;text-align:center;min-height:22px;display:flex;align-items:center;justify-content:center;}
+  .card .art{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .card .art img{width:100%;height:100%;object-fit:cover;border-radius:5px;}
+  .card .emoji{font-size:38px;}
+  .card .st{display:flex;justify-content:space-between;font-size:12px;font-weight:bold;padding:0 2px;}
+  .card .atk{color:#ffd05a;} .card .hp{color:#7bff9b;}
+  .card .kw{position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:8px;color:#ffd874;}
+  .card .tx{font-size:8px;text-align:center;color:#d7c6ee;min-height:18px;}
+  .card.canact{box-shadow:0 0 0 2px #7bff9b,0 3px 8px rgba(0,0,0,.5);}
+  .card.selected{box-shadow:0 0 0 3px #ffd874,0 0 14px #ffd874;transform:translateY(-5px);}
+  .card.target{box-shadow:0 0 0 3px #ff6b6b,0 0 14px #ff6b6b;cursor:crosshair;}
+  .card.guard{border-color:#ffd874;}
+  .card.sick::after{content:"💤";position:absolute;top:2px;right:4px;font-size:11px;}
+  .card .skillmark{position:absolute;top:2px;left:50%;transform:translateX(-50%);font-size:9px;color:#ffd;background:rgba(120,60,30,.85);border-radius:6px;padding:0 4px;}
+  .rarN{} .rarR{border-color:#5fa8ff;} .rarSR{border-color:#c08bff;} .rarSSR{border-color:#ffcf5a;box-shadow:0 0 8px rgba(255,207,90,.4);}
+  .hand{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;min-height:150px;padding:6px;background:rgba(0,0,0,.2);border-radius:12px;margin-top:6px;max-width:1000px;margin-left:auto;margin-right:auto;}
+  .opp-hand{display:flex;gap:3px;justify-content:center;margin:4px;}
+  .cardback{width:30px;height:42px;border-radius:5px;background:linear-gradient(135deg,#444,#222);border:1px solid #666;}
+  .controls{display:flex;gap:10px;justify-content:center;margin:8px;}
+  .hint{text-align:center;font-size:13px;color:#ffd874;min-height:20px;margin:4px;}
+  #log{max-width:1000px;margin:8px auto;height:84px;overflow-y:auto;background:rgba(0,0,0,.3);border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.5;}
+  #log .me{color:#7bdcff;} #log .foe{color:#ff9b9b;} #log .sys{color:#cdd3dd;} #log .fx{color:#ffd874;}
+
+  /* メニュー/ロビー/ポップアップ */
+  .panel{background:rgba(255,255,255,.05);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;min-width:300px;max-width:480px;width:100%;}
+  .row{display:flex;gap:8px;} .row input{flex:1;}
+  .menu-sub{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;width:100%;max-width:900px;}
+  .mini{width:100px;border-radius:10px;padding:5px;background:linear-gradient(160deg,#3a4a66,#222b3c);border:2px solid #5b6b88;position:relative;}
+  .mini .mart{height:40px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .mini .mart img{width:100%;height:40px;object-fit:cover;border-radius:5px;} .mini .mart .emoji{font-size:30px;}
+  .mini .mn{font-size:10px;font-weight:bold;text-align:center;min-height:24px;display:flex;align-items:center;justify-content:center;}
+  .mini .ms{font-size:9px;text-align:center;color:#cdd3dd;}
+  .mini .rr{position:absolute;top:-6px;right:-6px;font-size:9px;font-weight:bold;padding:1px 5px;border-radius:8px;color:#111;}
+  .deckctl{display:flex;align-items:center;justify-content:space-between;margin-top:4px;}
+  .deckctl button{padding:1px 8px;}
+  #popup{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:60;}
+  #popup .pop{background:#222b3c;border:2px solid #5b6b88;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:220px;}
+  #popup .pop .ttl{font-weight:bold;text-align:center;}
+  /* 動的演出 */
+  .card{transition:transform .12s,box-shadow .15s;}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 2px #7bff9b,0 0 6px #7bff9b66}50%{box-shadow:0 0 0 2px #7bff9b,0 0 16px #7bff9bcc}}
+  .card.canact{animation:glow 1.3s ease-in-out infinite;}
+  @keyframes tglow{0%,100%{box-shadow:0 0 0 3px #ff6b6b,0 0 8px #ff6b6b66}50%{box-shadow:0 0 0 3px #ff6b6b,0 0 18px #ff6b6bdd}}
+  .card.target{animation:tglow 1s infinite;} .sidebar.facetarget{animation:tglow 1s infinite;}
+  @keyframes selglow{0%,100%{box-shadow:0 0 0 3px #ffd874,0 0 8px #ffd87466}50%{box-shadow:0 0 0 3px #ffd874,0 0 20px #ffd874}}
+  .card.selected{animation:selglow .9s infinite;}
+  @keyframes bump{0%{transform:scale(1)}30%{transform:scale(1.6)}100%{transform:scale(1)}}
+  .num.bump{animation:bump .35s ease;display:inline-block;}
+  .float{position:fixed;font-weight:bold;font-size:24px;pointer-events:none;z-index:80;text-shadow:0 1px 5px #000;animation:floatUp 1s ease-out forwards;}
+  @keyframes floatUp{0%{opacity:0;transform:translateY(8px) scale(.7)}20%{opacity:1;transform:translateY(-4px) scale(1.15)}100%{opacity:0;transform:translateY(-46px) scale(1)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .shake{animation:shake .3s;}
+  @keyframes cardEnter{0%{opacity:0;transform:translateY(18px) scale(.5) rotate(-8deg)}60%{opacity:1;transform:translateY(-3px) scale(1.08) rotate(2deg)}100%{transform:translateY(0) scale(1) rotate(0)}}
+  .card.enter{animation:cardEnter .38s cubic-bezier(.2,.8,.3,1.2);}
+  @keyframes hit{0%{filter:brightness(2.4) saturate(1.5)}40%{filter:brightness(1.5)}100%{filter:brightness(1)}}
+  .card.hit{animation:hit .35s, shake .3s;}
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:83;box-shadow:inset 0 0 90px 24px rgba(255,40,40,0);transition:box-shadow .12s ease;}
+  #vignette.flash{box-shadow:inset 0 0 90px 36px rgba(255,40,40,.55);}
+  #diceFx{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:85;pointer-events:none;}
+  #diceFx .d{font-size:84px;font-weight:bold;color:#ffd874;text-shadow:0 2px 10px #000;animation:diceRoll .9s ease;}
+  @keyframes diceRoll{0%{transform:rotate(0) scale(.2);opacity:0}45%{transform:rotate(400deg) scale(1.4);opacity:1}100%{transform:rotate(360deg) scale(1);opacity:1}}
+  #banner{position:fixed;top:38%;left:0;right:0;text-align:center;z-index:84;pointer-events:none;display:none;}
+  #banner span{display:inline-block;font-size:30px;font-weight:bold;color:#ffd874;background:rgba(0,0,0,.6);padding:10px 28px;border-radius:30px;animation:bannerIn 1.6s ease forwards;}
+  @keyframes bannerIn{0%{opacity:0;transform:scale(.6)}18%{opacity:1;transform:scale(1)}80%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.12)}}
+  button{transition:transform .1s,filter .1s;} button:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-1px);}
+  #detailArt{width:110px;height:110px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:10px;background:rgba(0,0,0,.25);}
+  #detailArt img{width:100%;height:100%;object-fit:cover;} #detailArt .emoji{font-size:60px;}
+  .mini{cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- ログイン -->
+<div class="overlay" id="login" style="display:flex;">
+  <h1>CHARACTER CLASH</h1>
+  <div class="panel">
+    <div class="muted">ユーザー名と合言葉でログイン（初回は自動登録）。別端末でも同じ名前/合言葉でデータが復元されます。</div>
+    <label>ユーザー名</label><input id="lgUser" placeholder="名前（管理者は admin）">
+    <label>合言葉（6文字以上）</label><input id="lgPass" type="password" placeholder="合言葉">
+    <button id="lgBtn" class="blue">ログイン / 登録</button>
+    <div id="lgStatus" class="status"></div>
+  </div>
+</div>
+
+<!-- メインメニュー -->
+<div class="overlay" id="menu">
+  <h1>CHARACTER CLASH</h1>
+  <div id="meWho" class="muted"></div>
+  <div class="panel">
+    <div style="text-align:center;font-weight:bold;color:#7bc0ff;">🌐 オンライン対戦</div>
+    <button id="mkHost" class="green" style="font-size:18px;padding:14px;">🏠 ルームを作成</button>
+    <div class="row"><input id="mkCode" placeholder="ルームIDを入力"><button id="mkJoin" class="blue">参加</button></div>
+    <div id="mkStatus" class="status"></div>
+  </div>
+  <div class="menu-sub">
+    <button id="mDeck" class="gray">🗂 デッキ編集</button>
+    <button id="mGacha" class="gray">🎰 ガチャ</button>
+    <button id="mDex" class="gray">📖 図鑑</button>
+    <button id="mLogout" class="gray">ログアウト</button>
+    <a id="mAdmin" href="#" class="adminOnly" style="display:none;align-self:center;color:#c08bff;font-size:12px;">🎨 管理者ツール（admin.html）</a>
+  </div>
+  <div class="muted" id="coinShow">💰 0</div>
+  <div class="panel" style="max-width:300px;">
+    <div style="font-weight:bold;color:#ffd874;text-align:center;">🎁 引き換えコード</div>
+    <div class="row"><input id="codeInput" placeholder="コードを入力"><button id="codeBtn" class="green">使う</button></div>
+    <div id="codeStatus" class="status"></div>
+  </div>
+</div>
+
+<!-- 盤面 -->
+<div id="game" style="display:none;">
+  <div class="sidebar" id="oppBar"><div class="stat" id="oppName">あいて</div>
+    <div class="stat life">❤<span class="num" id="oppLife">0</span></div>
+    <div class="stat energy">⚡<span class="num" id="oppEnergy">0</span></div>
+    <div class="stat deck">🂠<span id="oppDeck">0</span></div>
+    <div class="stat" id="oppGraveBtn" style="cursor:pointer">⚰<span id="oppGrave">0</span></div></div>
+  <div class="opp-hand" id="oppHand"></div>
+  <div class="board opp" id="oppBoard"></div>
+  <div class="hint" id="hint"></div>
+  <div class="board act" id="actBoard"></div>
+  <div class="sidebar" id="actBar"><div class="stat" id="actName">あなた</div>
+    <div class="stat life">❤<span class="num" id="actLife">0</span></div>
+    <div class="stat energy">⚡<span class="num" id="actEnergy">0</span></div>
+    <div class="stat deck">🂠<span id="actDeck">0</span></div>
+    <div class="stat" id="actGraveBtn" style="cursor:pointer">⚰<span id="actGrave">0</span></div></div>
+  <div class="hand" id="actHand"></div>
+  <div class="controls"><button id="endBtn">ターン終了</button><button id="cancelBtn" class="gray" style="display:none;">選択キャンセル</button><button id="quitBtn" class="gray">メニューへ</button></div>
+  <div id="log"></div>
+</div>
+
+<!-- デッキ編集 -->
+<div class="overlay" id="deckUI"><h1>🗂 デッキ編集</h1>
+  <div id="deckCount" class="status"></div>
+  <div class="muted">所持カードから40枚を選ぶ（同名4枚まで）。＋追加／−除外。自動保存。</div>
+  <div class="grid" id="deckGrid"></div>
+  <button id="deckClose" class="green">保存して戻る</button></div>
+
+<!-- ガチャ -->
+<div class="overlay" id="gachaUI"><h1>🎰 ガチャ</h1>
+  <div id="gachaCoins" class="status"></div>
+  <div class="row" style="justify-content:center;"><button id="gacha1" class="green">単発(100)</button><button id="gacha10" class="blue">10連(900)</button></div>
+  <div class="muted">SSR2% / SR10% / R28% / N60%</div>
+  <div class="grid" id="gachaResult"></div>
+  <button id="gachaClose" class="gray">戻る</button></div>
+
+<!-- 結果 -->
+<div class="overlay" id="result"><h1 id="resultText"></h1><div id="resultSub" class="status"></div><button id="resultBtn" class="green">メニューへ</button></div>
+
+<!-- 図鑑 -->
+<div class="overlay" id="dex"><h1>📖 カード図鑑</h1><div class="muted">カードをタップで能力の詳細が見られます</div><div class="grid" id="dexGrid"></div><button id="dexClose" class="gray">戻る</button></div>
+
+<!-- 墓地 -->
+<div class="overlay" id="graveUI" style="z-index:65;"><h1 id="graveTitle">⚰ 墓地</h1><div class="muted">死亡したキャラはここへ。復活効果で戻せます</div><div class="grid" id="graveGrid"></div><button id="graveClose" class="gray">閉じる</button></div>
+
+<!-- カード詳細 -->
+<div class="overlay" id="detail" style="z-index:70;">
+  <div class="panel" style="max-width:340px;align-items:center;">
+    <div id="detailArt"></div>
+    <div id="detailBody" style="align-self:stretch;display:flex;flex-direction:column;gap:5px;font-size:13px;line-height:1.5;"></div>
+    <button id="detailClose" class="gray">閉じる</button>
+  </div>
+</div>
+
+<!-- 行動ポップアップ -->
+<div id="popup"><div class="pop" id="popInner"></div></div>
+
+<!-- 演出 -->
+<div id="vignette"></div>
+<div id="diceFx"><div class="d" id="diceVal"></div></div>
+<div id="banner"><span id="bannerTxt"></span></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc }
+  from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+/* ===== Firebase ===== */
+const firebaseConfig = {
+  apiKey:"AIzaSyBTQezMTWuL9UtPnbRi7jx7Dz0Mt4sWLio",
+  authDomain:"character-clash-e02ff.firebaseapp.com",
+  projectId:"character-clash-e02ff",
+  storageBucket:"character-clash-e02ff.firebasestorage.app",
+  messagingSenderId:"97771629122",
+  appId:"1:97771629122:web:0308f8a76933d6974a5bdb"
+};
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+const ADMIN_USER="admin";
+const $=id=>document.getElementById(id);
+const setS=(el,m,c="")=>{el.className="status "+c;el.textContent=m;};
+const toEmail=u=>`${u.trim().toLowerCase()}@clash.player`;
+const padPass=p=>p.length<6?p.padEnd(6,"_"):p;
+
+/* ===== 設定（クラウドの config/game。無ければ既定）===== */
+let CFG={ startLife:10000, scale:1000, deckSize:40, maxCopies:4, energyIncome:1, energyCap:15, boardMax:5 };
+async function loadConfig(){
+  try{ const s=await getDoc(doc(db,"config","game")); if(s.exists()) CFG=Object.assign(CFG,s.data()); }catch(e){}
+}
+
+/* ===== マスターカード ===== */
+let CARDS={};
+async function loadCards(){
+  const snap=await getDocs(collection(db,"masterCards"));
+  CARDS={}; snap.forEach(d=>CARDS[d.id]=d.data());
+  CARDS["_token"]={name:"子分",type:"char",cost:1,atk:1000,hp:1000,art:"👦",kw:[],abil:[],rarity:"N"};
+}
+
+/* ===== ユーザーデータ ===== */
+let coins=0, collection_={}, decks={main:[]}, redeemed=[];
+function defaultCollection(){ const c={}; Object.keys(CARDS).forEach(id=>{ const r=CARDS[id]&&CARDS[id].rarity; if(id[0]!=="_" && (r==="N"||r==="R")) c[id]=4; }); return c; } // 最初はN/Rのみ。SR/SSR・新カードはガチャ入手
+async function loadUser(){
+  const u=auth.currentUser; const s=await getDoc(doc(db,"users",u.uid));
+  if(s.exists()){ const d=s.data(); coins=d.coins??500; collection_=d.collection??defaultCollection(); decks=d.decks??{main:[]}; redeemed=d.redeemed??[]; }
+  else{ coins=500; collection_=defaultCollection(); decks={main:[]}; redeemed=[]; await saveUser(); }
+}
+let saveT=null;
+function saveUser(){ clearTimeout(saveT); return new Promise(r=>{ saveT=setTimeout(async()=>{
+  const u=auth.currentUser; if(!u) return r();
+  await setDoc(doc(db,"users",u.uid),{username:u.email.split("@")[0],coins,collection:collection_,decks,redeemed,updatedAt:Date.now()},{merge:true});
+  r();
+},400); }); }
+// 引き換えコード（クラウド config/codes から読込・管理者が発行・各一回きり）
+let CODES={};
+async function loadCodes(){ try{ const s=await getDoc(doc(db,"config","codes")); CODES=(s.exists()&&s.data().map)?s.data().map:{}; }catch(e){ CODES={}; } }
+function redeemCode(raw){ const code=(raw||"").trim(); const amt=CODES[code];
+  if(!amt){ setS($("codeStatus"),"⚠ 無効なコードです","err"); return; }
+  if((redeemed||[]).includes(code)){ setS($("codeStatus"),"⚠ このコードは使用済みです","err"); return; }
+  coins+=amt; redeemed=redeemed||[]; redeemed.push(code); saveUser();
+  $("coinShow").textContent="💰 "+coins; $("codeInput").value="";
+  setS($("codeStatus"),`✅ +${amt}コイン！（所持 ${coins}）`,"ok"); }
+function isAdmin(){ return auth.currentUser?.email?.split("@")[0]===ADMIN_USER; }
+
+/* ===== 画像（base64 img があれば表示、無ければ絵文字） ===== */
+function artHTML(id){ const d=CARDS[id]||{}; if(d.img) return `<img src="${d.img}" alt="">`; return `<span class="emoji">${d.art||"❓"}</span>`; }
+
+/* ========================================================= */
+/* ===== ゲーム状態 ===== */
+let G, uid=1, selected=null, pending=null, online=false, myseat=null, peer=null, conn=null, gameFinished=false;
+const other=k=>k==="p1"?"p2":"p1";
+const act=()=>G[G.turn];
+const opp=()=>G[other(G.turn)];
+function log(t,who="sys"){ const el=$("log"); el.innerHTML+=`<div class="${who}">${t}</div>`; el.scrollTop=el.scrollHeight; }
+
+function inst(id){ const c=CARDS[id]; return {uid:uid++,id,atk:c.atk||0,hp:c.hp||0,maxHp:c.hp||0,buff:0,
+  summonSick:!(c.kw||[]).includes("速攻"),attacksLeft:0,kw:(c.kw||[]).slice(),abil:(c.abil||[]).slice(),usedSkill:false,_lastDmg:0}; }
+function newPlayer(deckIds){ const d=(deckIds&&deckIds.length?deckIds:Object.keys(collection_).slice(0,CFG.deckSize)).filter(id=>CARDS[id]).map(id=>({id}));
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
+  return {life:CFG.startLife,energy:0,deck:d,hand:[],board:[],grave:[],firstDone:false}; }
+function draw(key,n=1){ const p=G[key]; for(let k=0;k<n;k++){ if(p.deck.length===0){ endGame(other(key),`${key}の山札切れ`); return; } p.hand.push(p.deck.shift()); } }
+
+/* ===== 効果エンジン（if→then のデータ駆動。サイコロ・新効果は後から追加可）===== */
+function rollDie(){ return 1+Math.floor(Math.random()*6); }
+function evalAmount(a,ctx){ if(typeof a==="number") return a; if(typeof a!=="string") return 0;
+  if(/^\d+$/.test(a)) return parseInt(a,10);
+  const m=a.match(/^dice(?:\s*([*+])\s*(\d+))?$/); if(m){ const v=ctx.dice||0; if(!m[1]) return v; return m[1]==="*"?v*parseInt(m[2],10):v+parseInt(m[2],10);} return parseInt(a,10)||0; }
+function checkCond(cond,ctx,me,foe,self){ if(!cond||cond.type==="always") return true;
+  switch(cond.type){ case"dice>=":return ctx.dice>=cond.value; case"dice<=":return ctx.dice<=cond.value; case"dice==":return ctx.dice===cond.value;
+    case"enemyHasChar":return foe.board.length>0; case"selfDamaged":return self&&self.hp<self.maxHp; case"boardSpace":return me.board.length<CFG.boardMax; default:return true; } }
+function autoTargetEnemy(foe){ return foe.board.length? [...foe.board].sort((a,b)=>(b.atk+b.buff)-(a.atk+a.buff))[0] : null; }
+function applyEffect(ef,ctx,meKey,me,foe,self,chosen){ const amt=evalAmount(ef.amount,ctx); const nm=self?(CARDS[self.id].name):"効果";
+  switch(ef.effect){
+    case"damageFace": foe.life-=amt; log(`【${nm}】相手に${amt}ダメージ`,"fx"); break;
+    case"damageTarget":{ const t=chosen||autoTargetEnemy(foe); if(t){ t.hp-=amt; log(`【${nm}】${CARDS[t.id].name}に${amt}`,"fx"); } } break;
+    case"damageAllEnemies": foe.board.forEach(c=>c.hp-=amt); log(`【${nm}】相手全体に${amt}`,"fx"); break;
+    case"draw": draw(meKey,amt); log(`【${nm}】${amt}枚ドロー`,"fx"); break;
+    case"gainEnergy": me.energy=Math.min(CFG.energyCap,me.energy+amt); log(`【${nm}】エナジー+${amt}`,"fx"); break;
+    case"buffSelf": if(self){ self.atk+=amt; self.maxHp+=amt; self.hp+=amt; log(`【${nm}】+${amt}/+${amt}`,"fx"); } break;
+    case"buffAllyAtk": me.board.forEach(c=>c.atk+=amt); log(`【${nm}】味方ATK+${amt}`,"fx"); break;
+    case"healAlly":{ const t=chosen; if(t){ t.hp=Math.min(t.maxHp,t.hp+amt); log(`【${nm}】${CARDS[t.id].name}回復`,"fx"); } } break;
+    case"healAllAllies": me.board.forEach(c=>c.hp=Math.min(c.maxHp,c.hp+amt)); log(`【${nm}】味方全体回復`,"fx"); break;
+    case"summonToken": if(me.board.length<CFG.boardMax){ me.board.push(inst("_token")); log(`【${nm}】子分召喚`,"fx"); } break;
+    case"lifestealLast": if(self){ me.life+=self._lastDmg||0; log(`【${nm}】吸血+${self._lastDmg||0}`,"fx"); } break;
+    // ===== 墓地 =====
+    case"reviveLast":      { const n=Math.max(1,amt||1); for(let i=0;i<n;i++) reviveFrom(meKey,me,"last"); } break;
+    case"reviveStrongest": { const n=Math.max(1,amt||1); for(let i=0;i<n;i++) reviveFrom(meKey,me,"strong"); } break;
+    case"reviveRandom":    { const n=Math.max(1,amt||1); for(let i=0;i<n;i++) reviveFrom(meKey,me,"rand"); } break;
+    case"sacrificeSelf":   if(self){ self.hp=0; log(`【${nm}】自身を生贄に`,"fx"); } break;
+  }
+}
+function reviveFrom(meKey,me,mode){ me.grave=me.grave||[]; if(!me.grave.length||me.board.length>=CFG.boardMax) return;
+  let idx=me.grave.length-1; // last
+  if(mode==="strong"){ let best=-1; me.grave.forEach((g,i)=>{ const c=(CARDS[g.id]||{}).cost||0; if(c>best){best=c;idx=i;} }); }
+  else if(mode==="rand"){ idx=Math.floor(Math.random()*me.grave.length); }
+  const g=me.grave.splice(idx,1)[0]; if(g&&CARDS[g.id]){ me.board.push(inst(g.id)); log(`【蘇生】${CARDS[g.id].name} が墓地から復活`,"fx"); } }
+function runAbility(ability,meKey,self,chosen){ const me=G[meKey], foe=G[other(meKey)]; const ctx={};
+  if(ability.usesDice){ ctx.dice=rollDie(); log(`🎲 ${ctx.dice}`,"fx"); showDice(ctx.dice); }
+  (ability.steps||[]).forEach(st=>{ if(checkCond(st.if,ctx,me,foe,self)) applyEffect(st.then,ctx,meKey,me,foe,self,chosen); });
+}
+/* 受動能力ライブラリ（旧 abil キー → エンジン。数値は1000単位）*/
+const ABILITY_LIB={
+  strike:{trigger:"summon",steps:[{then:{effect:"damageTarget",amount:3000}}]},
+  draw1:{trigger:"summon",steps:[{then:{effect:"draw",amount:1}}]},
+  rally:{trigger:"summon",steps:[{then:{effect:"buffAllyAtk",amount:1000}}]},
+  healAll:{trigger:"summon",steps:[{then:{effect:"healAllAllies",amount:2000}}]},
+  token:{trigger:"summon",steps:[{then:{effect:"summonToken"}}]},
+  deathBomb:{trigger:"death",steps:[{then:{effect:"damageAllEnemies",amount:2000}}]},
+  deathDraw:{trigger:"death",steps:[{then:{effect:"draw",amount:1}}]},
+  deathFace:{trigger:"death",steps:[{then:{effect:"damageFace",amount:3000}}]},
+  grow:{trigger:"turnStart",steps:[{then:{effect:"buffSelf",amount:1000}}]},
+  pingFace:{trigger:"turnStart",steps:[{then:{effect:"damageFace",amount:1000}}]},
+  healTurn:{trigger:"turnStart",steps:[{then:{effect:"healAllAllies",amount:1000}}]},
+  lifesteal:{trigger:"attack",steps:[{then:{effect:"lifestealLast"}}]},
+  drawAtk:{trigger:"attack",steps:[{then:{effect:"draw",amount:1}}]},
+};
+function fireTrigger(card,meKey,trigger){ (card.abil||[]).forEach(key=>{ const lib=ABILITY_LIB[key]; if(lib&&lib.trigger===trigger) runAbility(lib,meKey,card,null); }); }
+/* 起動型能力の正規化（簡易形 {effect,value} も steps に変換）*/
+function normActivated(ab){ if(!ab) return null; if(ab.steps) return ab; const v=ab.value||0;
+  const map={ diceDamageFace:{usesDice:true,steps:[{then:{effect:"damageFace",amount:"dice*"+v}}]},
+    diceDamageTarget:{usesDice:true,needsTarget:true,steps:[{then:{effect:"damageTarget",amount:"dice*"+v}}]},
+    damageTarget:{needsTarget:true,steps:[{then:{effect:"damageTarget",amount:v}}]},
+    damageFace:{steps:[{then:{effect:"damageFace",amount:v}}]},
+    buffSelf:{steps:[{then:{effect:"buffSelf",amount:v}}]},
+    healAlly:{needsTarget:true,steps:[{then:{effect:"healAlly",amount:v}}]},
+    drawDice:{usesDice:true,steps:[{then:{effect:"draw",amount:"dice"}}]} };
+  return Object.assign({name:ab.name,cost:ab.cost,tapsAttack:ab.tapsAttack}, map[ab.effect]||{steps:[]}); }
+
+/* ===== 能力の説明テキスト（図鑑/詳細用） ===== */
+const KW_DESC={"速攻":"召喚したターンから攻撃できる","守護":"これを先に倒すまで他や本体を攻撃できない","貫通":"相手キャラを倒した余りを相手本体へ","再生":"自分のターン開始時にHP全回復","二回攻撃":"1ターンに2回攻撃できる"};
+const ABIL_DESC={strike:"召喚時：最もATKの高い相手キャラに3000ダメージ",draw1:"召喚時：カードを1枚引く",rally:"召喚時：味方全体のATK+1000",healAll:"召喚時：味方全体のHPを2000回復",token:"召喚時：子分(1/1)を場に出す",deathBomb:"死亡時：相手キャラ全体に2000ダメージ",deathDraw:"死亡時：カードを1枚引く",deathFace:"死亡時：相手本体に3000ダメージ",grow:"ターン開始時：+1000/+1000",pingFace:"ターン開始時：相手本体に1000ダメージ",healTurn:"ターン開始時：味方全体のHP+1000",lifesteal:"攻撃時：与えたダメージ分あなたのライフ回復",drawAtk:"攻撃時：カードを1枚引く"};
+function amtText(a){ return (typeof a==="string"&&a.includes("dice"))? a.replace(/dice/g,"出目") : a; }
+function stepText(st){ const t=st.then,a=amtText(t.amount); const cond=st.if&&st.if.type&&st.if.type!=="always"?`もし(${st.if.type}${st.if.value!=null?st.if.value:""})なら ` : "";
+  const m={damageFace:`相手本体に ${a} ダメージ`,damageTarget:`相手キャラ1体に ${a} ダメージ`,damageAllEnemies:`相手全体に ${a} ダメージ`,draw:`${a} 枚ドロー`,gainEnergy:`エナジー+${a}`,buffSelf:`自身を +${a}/+${a}`,buffAllyAtk:`味方ATK+${a}`,healAlly:`味方1体を ${a} 回復`,healAllAllies:`味方全体を ${a} 回復`,summonToken:`子分(1/1)を召喚`,lifestealLast:`与ダメージ分ライフ回復`,reviveLast:`墓地から最近の味方を ${a} 体復活`,reviveStrongest:`墓地から最強の味方を ${a} 体復活`,reviveRandom:`墓地からランダムに ${a} 体復活`,sacrificeSelf:`自身を生贄に(墓地へ)`};
+  return cond+(m[t.effect]||t.effect); }
+function describeActivated(raw){ const ab=normActivated(raw); if(!ab) return ""; const dice=ab.usesDice?"🎲サイコロを振り、":""; return `【技】${ab.name||""}（⚡${ab.cost}${ab.tapsAttack?"・使うとそのターン攻撃不可":""}）：${dice}`+(ab.steps||[]).map(stepText).join(" / "); }
+function describeCard(id){ const d=CARDS[id]; if(!d) return ""; let h=`<div style="font-weight:bold;font-size:16px;color:#ffd874">${d.name||""} <span style="color:#9aa6b8;font-size:11px">[${d.rarity||"N"}]</span></div>`;
+  h+=`<div class="muted">${d.type==="char"?`コスト${d.cost}　⚔${d.atk}　♥${d.hp}`:`スキル・コスト${d.cost}`}</div>`;
+  if(d.txt) h+=`<div>${d.txt}</div>`;
+  (d.kw||[]).forEach(k=>{ h+=`<div><b style="color:#ffd874">${k}</b>：${KW_DESC[k]||""}</div>`; });
+  (d.abil||[]).forEach(k=>{ if(ABIL_DESC[k]) h+=`<div><b style="color:#7bff9b">能力</b> ${ABIL_DESC[k]}</div>`; });
+  if(d.activated) h+=`<div style="color:#d9c7ff;margin-top:4px">${describeActivated(d.activated)}</div>`;
+  if(!(d.kw||[]).length && !(d.abil||[]).length && !d.activated && d.type==="char") h+=`<div class="muted">特殊能力なし</div>`;
+  return h; }
+function showDetail(id){ $("detailArt").innerHTML=artHTML(id); $("detailBody").innerHTML=describeCard(id); $("detail").style.display="flex"; }
+function findInst(u){ if(!G) return null; for(const k of ["p1","p2"]){ const f=G[k].board.find(c=>c.uid===u); if(f) return f; } return null; }
+
+/* ===== 戦闘 ===== */
+const eff=c=>Math.max(0,c.atk+c.buff);
+const hasGuard=p=>p.board.some(c=>c.kw.includes("守護"));
+function cleanup(){ let ch=true; while(ch){ ch=false; ["p1","p2"].forEach(k=>{ const dead=G[k].board.filter(c=>c.hp<=0); if(dead.length){ ch=true; G[k].grave=G[k].grave||[];
+  dead.forEach(c=>{ log(`${CARDS[c.id].name} 破壊`,"sys"); fireTrigger(c,k,"death"); if(c.id!=="_token") G[k].grave.push({id:c.id}); }); G[k].board=G[k].board.filter(c=>c.hp>0); } }); } }
+function checkWin(){ if(G.p2.life<=0) endGame("p1",""); else if(G.p1.life<=0) endGame("p2",""); }
+function attack(attacker,targetUid){ const me=act(), foe=opp(); if(attacker.attacksLeft<=0||attacker.summonSick) return; let fx=null;
+  if(targetUid===null){ if(hasGuard(foe)) return; attacker._lastDmg=eff(attacker); foe.life-=eff(attacker); log(`${CARDS[attacker.id].name} が相手に${eff(attacker)}`,"me"); }
+  else{ const t=foe.board.find(c=>c.uid===targetUid); if(!t) return; if(hasGuard(foe)&&!t.kw.includes("守護")) return;
+    const a=eff(attacker),tk=eff(t),hb=t.hp; attacker._lastDmg=a; t.hp-=a; attacker.hp-=tk; log(`${CARDS[attacker.id].name}(${a}) ⚔ ${CARDS[t.id].name}(${tk})`,"me");
+    fx={tu:targetUid, au:attacker.uid, dmgT:a, dmgA:tk};
+    if(attacker.kw.includes("貫通")&&t.hp<=0){ const ov=a-hb; if(ov>0){ foe.life-=ov; log(`貫通${ov}`,"fx"); } } }
+  attacker.attacksLeft--; fireTrigger(attacker,G.turn,"attack"); cleanup(); checkWin(); render(); combatFx(fx); if(online) pushState(); }
+function combatFx(fx){ if(!fx) return;
+  flashCard(fx.au); floatOnCard(fx.au, "-"+fx.dmgA, "#ff9b9b");
+  flashCard(fx.tu); floatOnCard(fx.tu, "-"+fx.dmgT, "#ff6b6b"); }
+
+/* ===== ターン ===== */
+function startTurnLocal(){ if(G.over) return; const p=G[G.turn];
+  p.energy=Math.min(CFG.energyCap, p.energy+CFG.energyIncome);     // ★貯金式：持ち越し＋収入
+  p.board.forEach(c=>{ c.summonSick=false; c.buff=0; c.attacksLeft=c.kw.includes("二回攻撃")?2:1; c.usedSkill=false; if(c.kw.includes("再生")) c.hp=c.maxHp; });
+  p.board.slice().forEach(c=>fireTrigger(c,G.turn,"turnStart")); cleanup(); checkWin();
+  if(!G.over && !(G.turn==="p1" && !p.firstDone)) draw(G.turn,1);
+  p.firstDone=true; selected=null; pending=null;
+  if(!G.over) log((G.turn===myseat?"あなた":"あいて")+`のターン（⚡${p.energy}）`, G.turn===myseat?"me":"foe"); }
+function endTurn(){ if(G.over||(online&&G.turn!==myseat)) return; selected=null; pending=null; G.turn=other(G.turn); G.pendingStart=true; pushState(); render(); }
+
+/* ===== 操作 ===== */
+function playCard(i){ const p=act(), card=p.hand[i], def=CARDS[card.id]; if(!def) return;
+  if(def.type==="skill"){ playSkill(i); return; }
+  if(p.board.length>=CFG.boardMax){ setHint("場が一杯です"); return; }
+  if(p.energy<def.cost){ setHint("エナジー不足"); return; }
+  p.energy-=def.cost; p.hand.splice(i,1); const ni=inst(card.id); p.board.push(ni);
+  log(`${CARDS[card.id].name} を召喚`,"me"); fireTrigger(ni,G.turn,"summon"); cleanup(); checkWin();
+  selected=null; pending=null; render(); if(online) pushState(); }
+function playSkill(i){ const p=act(), card=p.hand[i], def=CARDS[card.id]; if(p.energy<def.cost){ setHint("エナジー不足"); return; }
+  if(def.target==="none"){ p.energy-=def.cost; p.hand.splice(i,1); resolveSkill(card.id,null); selected=null; render(); if(online) pushState(); return; }
+  pending={kind:"skill",i,id:card.id,target:def.target}; selected=null; setHint(`${def.name}：対象選択`); render(); }
+function resolveSkill(id,t){ const def=CARDS[id], S=CFG.scale;
+  if(def && Array.isArray(def.steps) && def.steps.length){   // 管理画面で作った自由スキル（効果エンジン）
+    runAbility({steps:def.steps,usesDice:def.usesDice}, G.turn, null, t); cleanup(); checkWin(); log(`${def.name||"スキル"} 使用`,"me"); return; }
+  if(id==="boost"&&t){ t.buff+=2*S; } else if(id==="heal"&&t){ t.hp=t.maxHp; }
+  else if(id==="bomb"&&t){ t.hp-=4*S; cleanup(); } else if(id==="draw"){ draw(G.turn,2); }
+  log(`${(def&&def.name)||"スキル"} 使用`,"me"); checkWin(); }
+
+function clickActChar(uidv){ if(G.over||(online&&G.turn!==myseat)) return; const c=act().board.find(x=>x.uid===uidv); if(!c) return;
+  if(pending){ // 対象＝味方
+    if(pending.target==="ally"){ const p=act(); p.energy-=CARDS[pending.id].cost; p.hand.splice(pending.i,1); resolveSkill(pending.id,c); pending=null; render(); if(online) pushState(); }
+    else if(pending.kind==="activatedAlly"){ doActivated(pending.self,c); }
+    return; }
+  const ab=normActivated(CARDS[c.id].activated);
+  const canAttack=!c.summonSick && c.attacksLeft>0;
+  if(ab){ showPopup(c,ab,canAttack); return; }
+  if(!canAttack){ setHint("まだ動けません"); return; }
+  selectAttacker(c); }
+function selectAttacker(c){ if(selected&&selected.uid===c.uid){ selected=null; render(); return; } selected={kind:"attacker",uid:c.uid}; setHint("攻撃対象を選択"); render(); }
+
+function showPopup(c,ab,canAttack){ const can=act().energy>=ab.cost && !c.usedSkill;
+  $("popInner").innerHTML=`<div class="ttl">${CARDS[c.id].name}</div>
+    <button data-a="atk" ${canAttack?'':'disabled'}>⚔ 通常攻撃</button>
+    <button class="green" data-a="skill" ${can?'':'disabled'}>✦ ${ab.name||"技"}（⚡${ab.cost}）</button>
+    <button class="gray" data-a="x">キャンセル</button>`;
+  $("popup").style.display="flex";
+  $("popInner").onclick=(e)=>{ const a=e.target.dataset.a; if(!a) return; $("popup").style.display="none";
+    if(a==="atk") selectAttacker(c); else if(a==="skill") startActivated(c,ab); }; }
+function startActivated(c,ab){ if(ab.needsTarget){ pending={kind:"activatedAlly",self:c}; // 回復は味方対象、ダメージは敵対象
+    pending.target = (ab.steps[0]&&ab.steps[0].then.effect==="healAlly")?"ally":"enemy"; setHint(`${ab.name}：対象選択`); render();
+    if(pending.target==="enemy"){ pending.kind="activatedEnemy"; } return; }
+  doActivated(c,null); }
+function doActivated(self,target){ const me=act(); const ab=normActivated(CARDS[self.id].activated); if(me.energy<ab.cost) return;
+  me.energy-=ab.cost; self.usedSkill=true; if(ab.tapsAttack) self.attacksLeft=0;
+  runAbility(ab,G.turn,self,target); pending=null; cleanup(); checkWin(); render(); if(online) pushState(); }
+
+function clickOppChar(uidv){ if(G.over||(online&&G.turn!==myseat)) return; const t=opp().board.find(x=>x.uid===uidv);
+  if(pending&&(pending.target==="enemy"||pending.kind==="activatedEnemy")){
+    if(pending.kind==="activatedEnemy"){ doActivated(pending.self,t); return; }
+    const p=act(); p.energy-=CARDS[pending.id].cost; p.hand.splice(pending.i,1); resolveSkill(pending.id,t); pending=null; render(); if(online) pushState(); return; }
+  if(selected&&selected.kind==="attacker"){ if(hasGuard(opp())&&!t.kw.includes("守護")){ setHint("🛡守護を先に"); return; } attack(act().board.find(x=>x.uid===selected.uid),uidv); selected=null; } }
+function clickOppFace(){ if(G.over||(online&&G.turn!==myseat)) return; if(selected&&selected.kind==="attacker"){ if(hasGuard(opp())){ setHint("🛡守護がいる"); return; } attack(act().board.find(x=>x.uid===selected.uid),null); selected=null; } }
+
+/* ===== 描画 ===== */
+const bottomSeat=()=>online?myseat:G.turn;
+const topSeat=()=>bottomSeat()==="p1"?"p2":"p1";
+function skillMark(c){ const ab=CARDS[c.id]&&CARDS[c.id].activated; return ab?`<div class="skillmark" title="${(ab.name||'技')}（⚡${ab.cost}）">✦${ab.cost}</div>`:""; }
+function cardHTML(c,ctx){ const def=CARDS[c.id]||{}; const cls=["card","rar"+(def.rarity||"N")]; if(def.type==="skill") cls.push("skill"); if(!seenUids.has(c.uid)) cls.push("enter");
+  if(ctx==="act"){ if(!c.summonSick&&c.attacksLeft>0&&(!online||G.turn===myseat)) cls.push("canact"); if(c.summonSick) cls.push("sick"); if(selected&&selected.uid===c.uid) cls.push("selected"); if(c.kw.includes("守護")) cls.push("guard"); if(pending&&(pending.target==="ally"||pending.kind==="activatedAlly")) cls.push("target"); }
+  if(ctx==="opp"){ if(c.kw.includes("守護")) cls.push("guard"); if((selected&&selected.kind==="attacker")||(pending&&(pending.target==="enemy"||pending.kind==="activatedEnemy"))){ if(!(selected&&hasGuard(opp())&&!c.kw.includes("守護"))) cls.push("target"); } }
+  const atk=c.atk+(c.buff||0); const kw=c.kw&&c.kw.length?`<div class="kw">${c.kw.join("・")}</div>`:"";
+  const st=`<div class="st"><span class="atk">⚔${atk}</span><span class="hp">♥${c.hp}</span></div>`;
+  return `<div class="${cls.join(' ')}" data-uid="${c.uid}" data-ctx="${ctx}"><div class="cost">${def.cost}</div>${skillMark(c)}<div class="nm">${def.name||""}</div><div class="art">${artHTML(c.id)}</div>${kw}${st}</div>`; }
+function handHTML(card,i){ const def=CARDS[card.id]||{}; const can=act().energy>=def.cost; const cls=["card","rar"+(def.rarity||"N")]; if(def.type==="skill") cls.push("skill");
+  const kw=def.kw&&def.kw.length?`<div class="kw">${def.kw.join("・")}</div>`:"";
+  const st=def.type==="char"?`<div class="st"><span class="atk">⚔${def.atk}</span><span class="hp">♥${def.hp}</span></div>`:`<div class="tx">${def.txt||""}</div>`;
+  return `<div class="${cls.join(' ')}" style="${can?'':'opacity:.5'}" data-hand="${i}"><div class="cost">${def.cost}</div>${def.activated?`<div class="skillmark">✦</div>`:""}<div class="nm">${def.name||""}</div><div class="art">${artHTML(card.id)}</div>${kw}${st}</div>`; }
+function setHint(t){ $("hint").textContent=t; }
+/* ===== 演出ヘルパー ===== */
+let lastLife={p1:null,p2:null}, lastTurnSeat=null, seenUids=new Set();
+function floatText(text,color,x,y){ const d=document.createElement("div"); d.className="float"; d.style.color=color; d.style.left=x+"px"; d.style.top=y+"px"; d.textContent=text; document.body.appendChild(d); setTimeout(()=>d.remove(),1000); }
+function flashCard(uid){ const el=document.querySelector(`.card[data-uid="${uid}"]`); if(el){ el.classList.remove("hit"); void el.offsetWidth; el.classList.add("hit"); } }
+function floatOnCard(uid,text,color){ const el=document.querySelector(`.card[data-uid="${uid}"]`); if(el){ const r=el.getBoundingClientRect(); floatText(text,color,r.left+r.width/2-14,r.top+10); } }
+function flashVignette(){ const v=$("vignette"); v.classList.remove("flash"); void v.offsetWidth; v.classList.add("flash"); setTimeout(()=>v.classList.remove("flash"),220); }
+function showDice(v){ $("diceVal").textContent="🎲 "+v; const f=$("diceFx"); f.style.display="flex"; const el=$("diceVal"); el.style.animation="none"; void el.offsetWidth; el.style.animation=""; clearTimeout(showDice._t); showDice._t=setTimeout(()=>f.style.display="none",950); }
+function bannerShow(t){ $("bannerTxt").textContent=t; const b=$("banner"); b.style.display="block"; const s=$("bannerTxt"); s.style.animation="none"; void s.offsetWidth; s.style.animation=""; clearTimeout(bannerShow._t); bannerShow._t=setTimeout(()=>b.style.display="none",1600); }
+function lifeFx(seat,el){ const v=G[seat].life, prev=lastLife[seat]; if(prev!=null&&v!==prev){ el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); const r=el.getBoundingClientRect(); const diff=v-prev; floatText((diff>0?"+":"")+diff, diff<0?"#ff6b6b":"#7bff9b", Math.max(10,r.left-10), r.top-12); if(diff<0){ const bar=el.closest(".sidebar"); if(bar){ bar.classList.remove("shake"); void bar.offsetWidth; bar.classList.add("shake"); } if(seat===bottomSeat()) flashVignette(); } } lastLife[seat]=v; }
+function resetFx(){ lastLife={p1:null,p2:null}; lastTurnSeat=null; seenUids=new Set(); }
+function render(){ if(!G) return; const bs=bottomSeat(), ts=topSeat(), a=G[bs], o=G[ts], myTurn=G.turn===bs;
+  $("actName").textContent="あなた"+(myTurn?"　🟢":""); $("oppName").textContent="あいて"+(!myTurn?"　⏳":"");
+  if(online) setHint(G.over?"":(myTurn?"あなたの番":"相手を待っています…"));
+  $("actLife").textContent=a.life; $("oppLife").textContent=o.life; $("actEnergy").textContent=a.energy; $("oppEnergy").textContent=o.energy; $("actDeck").textContent=a.deck.length; $("oppDeck").textContent=o.deck.length;
+  $("actGrave").textContent=(a.grave||[]).length; $("oppGrave").textContent=(o.grave||[]).length;
+  lifeFx(bs,$("actLife")); lifeFx(ts,$("oppLife"));
+  if(online && !G.over && G.turn===bs && lastTurnSeat!==bs) bannerShow("🟢 あなたのターン");
+  lastTurnSeat=G.turn;
+  $("oppHand").innerHTML=o.hand.map(()=>`<div class="cardback"></div>`).join("");
+  let oi="",ai=""; for(let i=0;i<CFG.boardMax;i++){ oi+=o.board[i]?cardHTML(o.board[i],"opp"):`<div class="slot">空</div>`; ai+=a.board[i]?cardHTML(a.board[i],"act"):`<div class="slot">空</div>`; }
+  $("oppBoard").innerHTML=oi; $("actBoard").innerHTML=ai;
+  [...a.board,...o.board].forEach(c=>seenUids.add(c.uid));   // 召喚アニメは新規カードのみ1回
+  $("actHand").innerHTML=a.hand.map((c,i)=>handHTML(c,i)).join("");
+  $("oppBar").classList.toggle("facetarget",!!(selected&&selected.kind==="attacker"&&!hasGuard(opp())));
+  $("cancelBtn").style.display=(selected||pending)?"inline-block":"none";
+  $("endBtn").disabled=G.over||(online&&G.turn!==myseat); }
+
+/* ===== 勝敗 ===== */
+function endGame(winner,msg){ if(G.over&&gameFinished) return; G.over=true; if(online) pushState(); finishGame(winner,msg); }
+function finishGame(winner,msg){ if(gameFinished) return; gameFinished=true; if(msg) log(msg,"sys");
+  const win=winner===myseat; if(win){ coins+=300; saveUser(); }
+  $("resultText").textContent=win?"🎉 あなたの勝ち！":"💀 あいての勝ち…"; $("resultText").style.color=win?"#7bff9b":"#ff7b7b";
+  setS($("resultSub"), win?`💰 +300（所持 ${coins}）`:`💰 所持 ${coins}`, win?"ok":"");
+  $("game").style.display="none"; $("result").style.display="flex"; }
+
+/* ===== オンライン（PeerJS）===== */
+const PEER_CONFIG={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun.relay.metered.ca:80"},
+  {urls:"turn:staticauth.openrelay.metered.ca:80",username:"openrelayproject",credential:"openrelayproject"},
+  {urls:"turn:staticauth.openrelay.metered.ca:443",username:"openrelayproject",credential:"openrelayproject"},
+  {urls:"turn:staticauth.openrelay.metered.ca:443?transport=tcp",username:"openrelayproject",credential:"openrelayproject"}]};
+const genCode=()=>{ const ch="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s=""; for(let i=0;i<4;i++) s+=ch[Math.floor(Math.random()*ch.length)]; return s; };
+const netStatus=t=>setS($("mkStatus"),t);
+function netSend(o){ try{ if(conn&&conn.open) conn.send(o); }catch(e){} }
+function pushState(){ if(online) netSend({type:"state",G}); }
+function myDeckList(){ const d=decks.main; return (d&&d.length?d:Object.keys(collection_).slice(0,CFG.deckSize)).filter(id=>CARDS[id]); }
+function deckDefs(ids){ const o={}; new Set(ids).forEach(id=>{ if(CARDS[id]) o[id]=CARDS[id]; }); o["_token"]=CARDS["_token"]; return o; }
+function setupConn(c){ conn=c; conn.on("data",onData); conn.on("close",()=>netStatus("⚠ 切断されました")); }
+function hostGame(){ myseat="p1"; const code=genCode(); netStatus("準備中…");
+  try{ peer=new Peer("clashx-"+code,{config:PEER_CONFIG}); }catch(e){ netStatus("初期化失敗、再読込を"); return; }
+  peer.on("open",()=>netStatus("ルームID： "+code+"\n相手の入室を待っています…"));
+  peer.on("connection",c=>{ setupConn(c); netStatus("接続中…"); });
+  peer.on("error",err=>{ if(err&&err.type==="unavailable-id"){ try{peer.destroy();}catch(e){} hostGame(); } else netStatus("接続エラー: "+(err&&err.type)); }); }
+function joinGame(code){ code=(code||"").trim().toUpperCase(); if(!code){ netStatus("ルームIDを入力"); return; } myseat="p2"; netStatus("接続中…");
+  try{ peer=new Peer({config:PEER_CONFIG}); }catch(e){ netStatus("初期化失敗、再読込を"); return; }
+  peer.on("open",()=>{ const c=peer.connect("clashx-"+code,{reliable:true}); setupConn(c); c.on("open",()=>{ netStatus("接続成功！"); sendHello(); });
+    setTimeout(()=>{ if(!(conn&&conn.open)) netStatus("⚠ 見つかりません。IDを確認/作り直し"); },9000); });
+  peer.on("error",err=>netStatus("接続エラー: "+((err&&err.type)||err))); }
+function sendHello(){ const deck=myDeckList(); netSend({type:"hello",deck,defs:deckDefs(deck)}); }
+function onData(msg){ if(!msg||!msg.type) return;
+  if(msg.type==="hello"){ Object.assign(CARDS,msg.defs||{}); startAsHost(msg.deck); }
+  else if(msg.type==="init"){ Object.assign(CARDS,msg.defs||{}); online=true; gameFinished=false; uid=1000000; G=msg.G; showGame(); render(); }
+  else if(msg.type==="state"){ G=msg.G; if(G.over){ render(); endGame((G.p1.life<=0)?"p2":"p1",""); return; }
+    if(G.turn===myseat&&G.pendingStart){ G.pendingStart=false; startTurnLocal(); render(); pushState(); } else render(); } }
+function startAsHost(joinerDeck){ uid=1; gameFinished=false; online=true;
+  G={p1:newPlayer(myDeckList()), p2:newPlayer(joinerDeck), turn:"p1", over:false, pendingStart:false};
+  G.p2.deck=joinerDeck.map(id=>({id})); // 参加者デッキ（順序はそのまま）
+  draw("p1",4); draw("p2",4); startTurnLocal(); showGame(); render();
+  netSend({type:"init",G,defs:deckDefs(myDeckList())}); }
+function showGame(){ resetFx(); ["login","menu","deckUI","gachaUI","result"].forEach(id=>$(id).style.display="none"); $("game").style.display="block"; }
+
+/* ===== ガチャ / デッキ ===== */
+const RAR={N:{c:"#9aa6b8",r:60},R:{c:"#5fa8ff",r:28},SR:{c:"#c08bff",r:10},SSR:{c:"#ffcf5a",r:2}};
+function miniHTML(id,extra=""){ const d=CARDS[id]||{}; const rar=d.rarity||"N"; const rc=(RAR[rar]||RAR.N).c;
+  const st=d.type==="char"?`⚔${d.atk} ♥${d.hp}・C${d.cost}`:`スキル・C${d.cost}`;
+  return `<div class="mini" data-info="${id}" style="border-color:${rc}"><div class="rr" style="background:${rc}">${rar}</div><div class="mart">${artHTML(id)}</div><div class="mn">${d.name||""}</div><div class="ms">${st}</div>${extra}</div>`; }
+function gachaPool(){ return Object.keys(CARDS).filter(id=>id[0]!=="_"&&CARDS[id].rarity); }
+function rollOne(){ const pool=gachaPool(); const r=Math.random()*100; let rar=r<RAR.SSR.r?"SSR":r<RAR.SSR.r+RAR.SR.r?"SR":r<RAR.SSR.r+RAR.SR.r+RAR.R.r?"R":"N";
+  let cand=pool.filter(id=>CARDS[id].rarity===rar); while(!cand.length&&rar!=="N"){ rar=rar==="SSR"?"SR":rar==="SR"?"R":"N"; cand=pool.filter(id=>CARDS[id].rarity===rar); } if(!cand.length) cand=pool;
+  const id=cand[Math.floor(Math.random()*cand.length)]; collection_[id]=(collection_[id]||0)+1; return id; }
+function pull(n){ const cost=n===10?900:100; if(coins<cost){ setS($("gachaResult"),"コイン不足",""); $("gachaResult").innerHTML='<div style="color:#ff8a8a">コインが足りません</div>'; return; }
+  coins-=cost; const res=[]; for(let i=0;i<n;i++) res.push(rollOne()); saveUser(); $("gachaCoins").textContent="💰 "+coins;
+  const ord={SSR:0,SR:1,R:2,N:3}; res.sort((a,b)=>ord[CARDS[a].rarity]-ord[CARDS[b].rarity]); $("gachaResult").innerHTML=res.map(id=>miniHTML(id)).join(""); }
+const deckCount=id=>(decks.main||[]).filter(x=>x===id).length;
+function renderDeck(){ $("deckCount").textContent=`${(decks.main||[]).length} / ${CFG.deckSize} 枚`;
+  const owned=Object.keys(collection_).filter(id=>collection_[id]>0&&CARDS[id]&&id[0]!=="_");
+  const ord={SSR:0,SR:1,R:2,N:3}; owned.sort((a,b)=>(ord[CARDS[a].rarity]??9)-(ord[CARDS[b].rarity]??9)||CARDS[a].cost-CARDS[b].cost);
+  $("deckGrid").innerHTML=owned.map(id=>{ const ind=deckCount(id);
+    return miniHTML(id,`<div class="deckctl"><button data-dm="${id}">−</button><span style="font-size:9px">${ind}/${CFG.maxCopies}</span><button data-dp="${id}">＋</button></div>`); }).join(""); }
+function addDeck(id){ if((decks.main||[]).length>=CFG.deckSize) return; if(deckCount(id)>=CFG.maxCopies) return; if(deckCount(id)>=(collection_[id]||0)) return; decks.main=decks.main||[]; decks.main.push(id); saveUser(); }
+function remDeck(id){ const i=(decks.main||[]).indexOf(id); if(i>=0){ decks.main.splice(i,1); saveUser(); } }
+
+/* ===== イベント配線 ===== */
+$("lgBtn").onclick=async()=>{ const u=$("lgUser").value.trim(), p=$("lgPass").value; if(!u||!p){ setS($("lgStatus"),"入力してください","err"); return; }
+  setS($("lgStatus"),"処理中…","run"); const email=toEmail(u), pass=padPass(p);
+  try{ try{ await signInWithEmailAndPassword(auth,email,pass); }catch(e1){ try{ await createUserWithEmailAndPassword(auth,email,pass); }catch(e2){ if(e2.code==="auth/email-already-in-use") throw new Error("合言葉が違います"); throw e2; } } }
+  catch(err){ setS($("lgStatus"),"⚠ "+(err.message||err.code),"err"); } };
+onAuthStateChanged(auth, async(user)=>{ if(!user){ $("login").style.display="flex"; $("menu").style.display="none"; return; }
+  setS($("lgStatus"),"データ読込中…","run");
+  try{ await loadConfig(); await loadCards(); await loadUser(); await loadCodes(); }catch(e){ setS($("lgStatus"),"⚠ 読込失敗: "+(e.message||e),"err"); return; }
+  $("login").style.display="none"; openMenu(); });
+function openMenu(){ ["game","deckUI","gachaUI","result"].forEach(id=>$(id).style.display="none"); $("menu").style.display="flex";
+  $("meWho").textContent="ログイン中："+auth.currentUser.email.split("@")[0]+(isAdmin()?"（管理者）":""); $("coinShow").textContent="💰 "+coins;
+  document.querySelectorAll(".adminOnly").forEach(el=>el.style.display=isAdmin()?"inline":"none"); netStatus(""); }
+$("mLogout").onclick=()=>signOut(auth);
+$("mDeck").onclick=()=>{ renderDeck(); $("deckUI").style.display="flex"; };
+$("deckClose").onclick=()=>{ saveUser(); openMenu(); };
+$("deckUI").addEventListener("click",e=>{ const p=e.target.closest("[data-dp]"); if(p){ addDeck(p.dataset.dp); renderDeck(); return; } const m=e.target.closest("[data-dm]"); if(m){ remDeck(m.dataset.dm); renderDeck(); return; } const info=e.target.closest("[data-info]"); if(info) showDetail(info.dataset.info); });
+$("gachaUI").addEventListener("click",e=>{ const info=e.target.closest("[data-info]"); if(info) showDetail(info.dataset.info); });
+// 図鑑
+$("mDex").onclick=()=>{ const total=Object.keys(CARDS).filter(id=>id[0]!=="_").length;
+  const ids=Object.keys(CARDS).filter(id=>id[0]!=="_" && (collection_[id]||0)>0);   // 入手済みのみ
+  const ord={SSR:0,SR:1,R:2,N:3}; ids.sort((a,b)=>(ord[CARDS[a].rarity]??9)-(ord[CARDS[b].rarity]??9)||(CARDS[a].cost-CARDS[b].cost));
+  $("dexGrid").innerHTML = ids.length ? ids.map(id=>miniHTML(id,`<div class="ms" style="color:#9aa6b8">所持 ${collection_[id]}</div>`)).join("") : `<div class="muted">まだカードを持っていません。ガチャで集めよう！</div>`;
+  document.querySelector("#dex h1").textContent=`📖 図鑑（${ids.length} / ${total}）`;
+  $("dex").style.display="flex"; };
+$("dexClose").onclick=()=>openMenu();
+$("dex").addEventListener("click",e=>{ const info=e.target.closest("[data-info]"); if(info) showDetail(info.dataset.info); });
+function closeDetail(){ $("detail").style.display="none"; lpFired=false; }
+$("detailClose").onclick=closeDetail;
+$("detail").addEventListener("click",e=>{ if(e.target.id==="detail") closeDetail(); });   // パネル外タップで閉じる
+$("popup").addEventListener("click",e=>{ if(e.target.id==="popup") $("popup").style.display="none"; });
+// 対戦中：右クリック / 長押しでカード詳細
+let lpFired=false, lpTimer=null;
+function inspectEl(c){ if(!c||!G) return;
+  if(c.dataset.hand!=null){ const card=G[bottomSeat()].hand[+c.dataset.hand]; if(card) showDetail(card.id); return; }
+  if(c.dataset.uid){ const seat=c.dataset.ctx==="opp"?topSeat():bottomSeat(); const ins=G[seat].board.find(x=>x.uid===+c.dataset.uid); if(ins) showDetail(ins.id); } }
+$("game").addEventListener("contextmenu",e=>{ const c=e.target.closest(".card"); if(c){ e.preventDefault(); inspectEl(c); } });
+$("game").addEventListener("touchstart",e=>{ const c=e.target.closest(".card"); if(!c) return; lpTimer=setTimeout(()=>{ lpFired=true; inspectEl(c); },500); },{passive:true});
+$("game").addEventListener("touchend",()=>clearTimeout(lpTimer));
+$("game").addEventListener("touchmove",()=>clearTimeout(lpTimer));
+$("mGacha").onclick=()=>{ $("gachaCoins").textContent="💰 "+coins; $("gachaResult").innerHTML=""; $("gachaUI").style.display="flex"; };
+$("codeBtn").onclick=()=>redeemCode($("codeInput").value);
+$("codeInput").addEventListener("keydown",e=>{ if(e.key==="Enter") redeemCode($("codeInput").value); });
+$("gachaClose").onclick=()=>{ openMenu(); };
+$("gacha1").onclick=()=>pull(1); $("gacha10").onclick=()=>pull(10);
+$("mkHost").onclick=()=>hostGame();
+$("mkJoin").onclick=()=>joinGame($("mkCode").value);
+$("mAdmin").onclick=(e)=>{ e.preventDefault(); alert("管理者ツール（admin.html）は次のステップで用意します。"); };
+$("endBtn").onclick=endTurn;
+$("cancelBtn").onclick=()=>{ selected=null; pending=null; $("popup").style.display="none"; setHint("選択解除"); render(); };
+$("quitBtn").onclick=()=>{ if(confirm("メニューに戻りますか？（対戦は終了します）")){ online=false; try{peer&&peer.destroy();}catch(e){} openMenu(); } };
+$("resultBtn").onclick=()=>{ online=false; try{peer&&peer.destroy();}catch(e){} openMenu(); };
+// 墓地ビューア
+function openGrave(seat){ const g=(G[seat].grave||[]); $("graveTitle").textContent=`⚰ ${seat===bottomSeat()?"あなた":"あいて"}の墓地（${g.length}）`;
+  $("graveGrid").innerHTML = g.length? g.map(x=>miniHTML(x.id)).join("") : `<div class="muted">まだ墓地は空です</div>`; $("graveUI").style.display="flex"; }
+$("actGraveBtn").onclick=(e)=>{ e.stopPropagation(); openGrave(bottomSeat()); };
+$("oppGraveBtn").onclick=(e)=>{ e.stopPropagation(); openGrave(topSeat()); };
+$("graveClose").onclick=()=>$("graveUI").style.display="none";
+$("graveUI").addEventListener("click",e=>{ const info=e.target.closest("[data-info]"); if(info){ showDetail(info.dataset.info); return; } if(e.target.id==="graveUI") $("graveUI").style.display="none"; });
+
+document.addEventListener("click",(e)=>{
+  if($("game").style.display==="none") return;
+  if($("popup").style.display==="flex") return;
+  if($("detail").style.display==="flex") return;
+  if(lpFired){ lpFired=false; return; }   // 長押しで詳細を出した直後のクリックは無効化
+  const h=e.target.closest("[data-hand]"); if(h){ if(!(online&&G.turn!==myseat)) playCard(+h.dataset.hand); return; }
+  const c=e.target.closest(".card[data-ctx]"); if(c){ const ctx=c.dataset.ctx, u=+c.dataset.uid; if(ctx==="act") clickActChar(u); else clickOppChar(u); return; }
+  if(e.target.closest("#oppBoard")&&selected&&selected.kind==="attacker"){ clickOppFace(); return; }
+  if(e.target.closest("#oppBar")&&selected&&selected.kind==="attacker"){ clickOppFace(); return; }
+});
+</script>
+</body>
+</html>
