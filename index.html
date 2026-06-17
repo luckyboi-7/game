@@ -92,6 +92,9 @@
   .logoimg{width:min(90vw,440px);height:auto;display:block;filter:drop-shadow(0 4px 12px rgba(0,0,0,.6));}
   .userbar{display:flex;justify-content:space-between;align-items:center;width:100%;background:rgba(0,0,0,.3);border-radius:30px;padding:6px 16px;}
   .userbar .who{font-size:13px;color:#cdd3dd;} .coinbadge{font-weight:900;color:#ffd874;font-size:16px;}
+  .newsbar{width:100%;max-width:440px;background:rgba(0,0,0,.35);border:1px solid #9c7a3a;border-radius:12px;padding:8px 12px;font-size:12px;line-height:1.6;max-height:120px;overflow:auto;}
+  .newsbar .ni{border-bottom:1px solid rgba(255,255,255,.08);padding:3px 0;color:#ffe7b0;}
+  .newsbar .ni:last-child{border:none;} .newsbar .nt{color:#caa23a;font-size:10px;}
   .battle-card{width:100%;max-width:440px;background:linear-gradient(160deg,rgba(120,90,40,.35),rgba(40,28,14,.65));border:1px solid #9c7a3a;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 18px rgba(0,0,0,.5);}
   .bc-ttl{text-align:center;font-weight:900;color:#ffd874;font-size:16px;letter-spacing:1px;}
   button.big{font-size:20px;padding:16px;border-radius:14px;}
@@ -171,6 +174,8 @@
     <div class="logo"><img class="logoimg" src="logo.png" alt="CHARACTER CLASH" onerror="this.parentNode.innerHTML='CHARACTER<br><span style=&quot;color:#7bc0ff&quot;>CLASH</span>'"></div>
     <div class="userbar"><span id="meWho" class="who"></span><span class="coinbadge" id="coinShow">💰 0</span></div>
   </div>
+
+  <div id="newsBar" class="newsbar"></div>
 
   <div class="battle-card">
     <div class="bc-ttl">🌐 オンライン対戦</div>
@@ -713,7 +718,10 @@ onAuthStateChanged(auth, async(user)=>{ if(!user){ $("login").style.display="fle
   $("login").style.display="none"; openMenu(); });
 function openMenu(){ ["game","deckUI","gachaUI","result","dex","detail","graveUI","online","council","market","submit","sell"].forEach(id=>{ const e=$(id); if(e) e.style.display="none"; }); $("menu").style.display="flex";
   $("meWho").textContent="ログイン中："+auth.currentUser.email.split("@")[0]+(isAdmin()?"（管理者）":""); $("coinShow").textContent="💰 "+coins;
-  document.querySelectorAll(".adminOnly").forEach(el=>el.style.display=isAdmin()?"inline":"none"); netStatus(""); }
+  document.querySelectorAll(".adminOnly").forEach(el=>el.style.display=isAdmin()?"inline":"none"); netStatus(""); loadNews(); }
+async function loadNews(){ try{ const s=await getDoc(doc(db,"config","news")); const items=(s.exists()&&s.data().items)||[];
+  $("newsBar").innerHTML = items.length ? items.slice(0,15).map(n=>`<div class="ni"><span class="nt">${n.date||""}</span> ${(n.text||"").replace(/</g,"&lt;")}</div>`).join("") : '<div class="muted" style="font-size:11px">お知らせはまだありません</div>';
+  }catch(e){ $("newsBar").innerHTML=""; } }
 $("mLogout").onclick=()=>signOut(auth);
 $("mDeck").onclick=()=>{ renderDeck(); $("deckUI").style.display="flex"; };
 $("deckClose").onclick=()=>{ if((decks.main||[]).length<CFG.deckSize){ alert(`デッキは${CFG.deckSize}枚にしてください（今 ${(decks.main||[]).length}枚）`); return; } saveUser(); openMenu(); };
