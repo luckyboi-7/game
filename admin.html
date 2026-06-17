@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHARACTER CLASH — 管理者ツール</title>
+<style>
+  *{box-sizing:border-box;} body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;background:#11151f;color:#eaeef5;margin:0;padding:16px;}
+  h1{font-size:18px;color:#ffd874;text-align:center;} h2{font-size:14px;color:#7bc0ff;margin:14px 0 6px;border-bottom:1px solid #2a3550;padding-bottom:4px;}
+  .wrap{max-width:760px;margin:0 auto;}
+  .box{background:rgba(255,255,255,.05);border-radius:12px;padding:16px;margin:12px 0;}
+  label{font-size:12px;color:#9aa6b8;display:block;margin-top:8px;}
+  input,select,textarea{width:100%;background:#1a2030;border:1px solid #5b6b88;color:#eaeef5;border-radius:6px;padding:8px 10px;font-size:14px;font-family:inherit;}
+  .row{display:flex;gap:8px;} .row>div{flex:1;}
+  button{background:#ffd874;color:#1a1a1a;border:none;border-radius:8px;padding:9px 14px;font-weight:bold;font-size:14px;cursor:pointer;margin-top:8px;}
+  button.blue{background:#4a90d9;color:#fff;} button.green{background:#3aa86a;color:#fff;} button.red{background:#a33;color:#fff;} button.gray{background:#777;color:#fff;}
+  button:disabled{background:#555;color:#999;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+  .chips label{display:flex;align-items:center;gap:3px;font-size:12px;color:#ffd874;margin:0;}
+  .status{font-size:13px;margin-top:8px;white-space:pre-wrap;line-height:1.5;}
+  .err{color:#ff8a8a;} .ok{color:#7bff9b;} .run{color:#ffd874;} .muted{color:#9aa6b8;font-size:12px;line-height:1.6;}
+  .step{background:#0d1320;border:1px solid #2a3550;border-radius:8px;padding:8px;margin-top:6px;}
+  .step .row{align-items:flex-end;}
+  #imgPrev{width:90px;height:90px;border-radius:8px;object-fit:cover;background:#0d1320;display:none;margin-top:6px;}
+  #gate,#noadmin{text-align:center;}
+  .overlay{position:fixed;inset:0;background:#11151f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:20;padding:20px;}
+  .panel{background:rgba(255,255,255,.05);border-radius:12px;padding:20px;max-width:360px;width:100%;}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="login">
+  <h1>🛠 管理者ツール</h1>
+  <div class="panel">
+    <div class="muted">ユーザー名 <b>admin</b> でログインしてください（cloud-setupで作った合言葉）。</div>
+    <label>ユーザー名</label><input id="lgUser" value="admin">
+    <label>合言葉</label><input id="lgPass" type="password">
+    <button id="lgBtn" class="blue">ログイン</button>
+    <div id="lgStatus" class="status"></div>
+  </div>
+</div>
+
+<div class="wrap" id="app" style="display:none;">
+  <h1>🛠 CHARACTER CLASH 管理者ツール</h1>
+  <div class="muted" id="who" style="text-align:center;"></div>
+  <button id="logoutBtn" class="gray" style="display:block;margin:6px auto;">ログアウト</button>
+
+  <div id="noadmin" class="box" style="display:none;color:#ff8a8a;">このユーザーは管理者ではありません（編集できません）。ユーザー名 <b>admin</b> でログインしてください。</div>
+
+  <div id="editor">
+    <div class="box">
+      <h2>カードを選ぶ / 新規作成</h2>
+      <select id="picker"></select>
+      <div class="muted" id="cardCount"></div>
+    </div>
+
+    <div class="box">
+      <h2>基本情報</h2>
+      <label>カードID（半角英数。新規時のみ編集可）</label>
+      <input id="fId" placeholder="例: dragon">
+      <div class="row">
+        <div><label>名前</label><input id="fName"></div>
+        <div><label>種類</label><select id="fType"><option value="char">キャラ</option><option value="skill">スキル</option></select></div>
+        <div><label>レアリティ</label><select id="fRar"><option>N</option><option>R</option><option>SR</option><option>SSR</option></select></div>
+      </div>
+      <div class="row">
+        <div><label>コスト（エナジー 0〜10）</label><input id="fCost" type="number"></div>
+        <div id="atkWrap"><label>ATK（1000単位 例6000）</label><input id="fAtk" type="number"></div>
+        <div id="hpWrap"><label>HP（1000単位 例6000）</label><input id="fHp" type="number"></div>
+      </div>
+      <label>絵文字（画像が無いとき表示）</label><input id="fArt" placeholder="🐲">
+      <div id="skillFields" style="display:none;">
+        <label>スキル説明文（図鑑に表示）</label><input id="fTxt">
+        <label>対象</label><select id="fTarget"><option value="none">なし(自動/全体)</option><option value="ally">味方を選ぶ</option><option value="enemy">相手を選ぶ</option></select>
+        <label style="margin-top:8px"><input type="checkbox" id="sDice" style="width:auto"> 🎲サイコロ(1〜6)を使う</label>
+        <h2 style="border:none;">効果（もし〜なら〜する）— ローコード</h2>
+        <div id="sSteps"></div>
+        <button id="addSStep" class="blue">＋ 効果ステップを追加</button>
+        <div class="muted">例：効果「相手キャラ1体にダメージ」量 4000（対象は上で「相手を選ぶ」に）／効果「ドロー」量 2。サイコロを使うなら量に <code>dice*1000</code> や <code>dice</code>。</div>
+      </div>
+    </div>
+
+    <div class="box">
+      <h2>画像（任意・base64でFirestoreに保存）</h2>
+      <input type="file" id="fImg" accept="image/*">
+      <img id="imgPrev">
+      <button id="imgClear" class="gray">画像を消す</button>
+    </div>
+
+    <div id="charOnly">
+      <div class="box">
+        <h2>基本特性（キーワード）</h2>
+        <div class="chips" id="kwChips"></div>
+      </div>
+      <div class="box">
+        <h2>受動能力（自動発動）</h2>
+        <div class="chips" id="abilChips"></div>
+      </div>
+      <div class="box">
+        <h2>起動型能力（コストで技を発動）— ローコードビルダー</h2>
+        <label><input type="checkbox" id="actOn" style="width:auto"> この技を持たせる</label>
+        <div id="actBody" style="display:none;">
+          <div class="row">
+            <div><label>技名</label><input id="actName" placeholder="竜の咆哮"></div>
+            <div><label>コスト</label><input id="actCost" type="number" value="2"></div>
+          </div>
+          <label><input type="checkbox" id="actTap" style="width:auto"> 使うとそのターン攻撃できない</label>
+          <label><input type="checkbox" id="actDice" style="width:auto"> 🎲サイコロ(1〜6)を使う</label>
+          <h2 style="border:none;">ステップ（もし〜なら〜する）</h2>
+          <div id="steps"></div>
+          <button id="addStep" class="blue">＋ ステップを追加</button>
+          <div class="muted">例：条件「なし」／効果「相手本体にダメージ」／量「dice*1000」＝サイコロの目×1000を相手に。<br>量は数字（例 3000）でも、サイコロを使うなら <code>dice*1000</code> や <code>dice</code> と書けます。</div>
+        </div>
+      </div>
+      <div class="box">
+        <h2>🧩 トリガー能力（複雑な能力・数値自由）</h2>
+        <div class="muted">召喚時・死亡時・ターン開始時・攻撃時に発動する能力を、効果と数値を自由に組んで追加できます（いくつでも）。受動能力のチェックより細かく作れます。</div>
+        <div id="trigList"></div>
+        <button id="trigAdd" class="blue">＋ 能力を追加</button>
+      </div>
+    </div>
+
+    <div class="box">
+      <button id="saveBtn" class="green">💾 保存（クラウドに反映）</button>
+      <button id="delBtn" class="red">🗑 削除</button>
+      <div id="saveStatus" class="status"></div>
+    </div>
+
+    <div class="box">
+      <h2>🤖 AIでカードを生成（Gemini）</h2>
+      <label>Gemini APIキー</label><input id="gKey" type="password" placeholder="AIza...">
+      <label>モデル</label><select id="gModel"><option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option><option value="gemini-2.5-flash">gemini-2.5-flash</option></select>
+      <label>どんなカード？</label><textarea id="gPrompt" rows="2" placeholder="氷を操る伝説の魔女。守りが得意で技で凍らせる"></textarea>
+      <button id="gBtn" class="blue">✨ 生成してフォームに反映</button>
+      <div id="gStatus" class="status"></div>
+      <div class="muted">生成後は内容を確認して「保存」を押すと公式カードになります（IDは自動でgen_…が入ります。変えてもOK）。</div>
+    </div>
+
+    <div class="box">
+      <h2>🎁 引き換えコード発行</h2>
+      <div class="muted">コード名とコイン額を設定して保存。プレイヤーはメニューの「引き換えコード」に入力（各ユーザー一回きり）。</div>
+      <div id="codeList"></div>
+      <button id="addCode" class="blue">＋ コードを追加</button>
+      <button id="saveCodes" class="green">コードを保存</button>
+      <div id="codesStatus" class="status"></div>
+    </div>
+
+    <div class="box">
+      <h2>⚙ ゲーム設定（全プレイヤー共通）</h2>
+      <div class="row">
+        <div><label>開始ライフ</label><input id="cLife" type="number"></div>
+        <div><label>1000単位(scale)</label><input id="cScale" type="number"></div>
+      </div>
+      <div class="row">
+        <div><label>デッキ枚数</label><input id="cDeck" type="number"></div>
+        <div><label>同名上限</label><input id="cCopies" type="number"></div>
+        <div><label>場の最大</label><input id="cBoard" type="number"></div>
+      </div>
+      <div class="row">
+        <div><label>エナジー収入/ターン</label><input id="cInc" type="number"></div>
+        <div><label>エナジー上限</label><input id="cCap" type="number"></div>
+      </div>
+      <button id="cfgSave" class="green">設定を保存</button>
+      <div id="cfgStatus" class="status"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc }
+  from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+const firebaseConfig={apiKey:"AIzaSyBTQezMTWuL9UtPnbRi7jx7Dz0Mt4sWLio",authDomain:"character-clash-e02ff.firebaseapp.com",projectId:"character-clash-e02ff",storageBucket:"character-clash-e02ff.firebasestorage.app",messagingSenderId:"97771629122",appId:"1:97771629122:web:0308f8a76933d6974a5bdb"};
+const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
+const ADMIN="admin", $=id=>document.getElementById(id);
+const setS=(el,m,c="")=>{el.className="status "+c;el.textContent=m;};
+const toEmail=u=>`${u.trim().toLowerCase()}@clash.player`, padPass=p=>p.length<6?p.padEnd(6,"_"):p;
+
+const KEYWORDS=["速攻","守護","貫通","再生","二回攻撃","攻撃不可","帰還"];
+const KW_DESC={"速攻":"召喚したターンから攻撃できる","守護":"これを先に倒すまで他や本体を攻撃できない","貫通":"相手キャラを倒した余りを相手本体へ","再生":"自分のターン開始時にHP全回復","二回攻撃":"1ターンに2回攻撃できる","攻撃不可":"自分から攻撃できない（守り・技専用。強キャラの抑制に）","帰還":"破壊されたら墓地でなく手札に戻る"};
+const ABILS=[["strike","召喚時:最大ATK敵に3000"],["draw1","召喚時:1ドロー"],["rally","召喚時:味方ATK+1000"],["healAll","召喚時:味方全体HP+2000"],["token","召喚時:子分召喚"],["deathBomb","死亡時:相手全体2000"],["deathDraw","死亡時:1ドロー"],["deathFace","死亡時:相手本体3000"],["grow","開始時:+1000/+1000"],["pingFace","開始時:相手本体1000"],["healTurn","開始時:味方全体HP+1000"],["lifesteal","攻撃時:吸血"],["drawAtk","攻撃時:1ドロー"],["manaRamp","ターン開始:エナジー+2(マナ加速)"],["lifeRegen","ターン開始:自分のライフ+1000"],["freezeStrike","召喚時:相手1体を足止め"],["drainSummon","召喚時:相手エナジー-2"]];
+const EFFECTS=[["damageFace","相手本体にダメージ"],["damageTarget","相手キャラにダメージ"],["damageAllEnemies","相手全体にダメージ"],["draw","ドロー"],["gainEnergy","エナジー獲得"],["healLife","あなたのライフを回復"],["freezeTarget","相手キャラ1体を足止め"],["freezeAll","相手全体を足止め"],["drainEnergy","相手のエナジーを削る"],["buffSelf","自身強化(+x/+x)"],["buffAllyAtk","味方ATK強化"],["healAlly","味方1体回復"],["healAllAllies","味方全体回復"],["summonToken","子分召喚"],["lifestealLast","与ダメージ吸血"],["reviveLast","墓地から最近の味方を復活"],["reviveStrongest","墓地から最強の味方を復活"],["reviveRandom","墓地からランダム復活"],["sacrificeSelf","自身を生贄(墓地へ)"]];
+const CONDS=[["","なし(必ず)"],["dice>=","出目が◯以上"],["dice<=","出目が◯以下"],["dice==","出目が◯"],["enemyHasChar","相手キャラがいる"],["selfDamaged","自身が傷ついている"],["boardSpace","場に空きがある"]];
+
+/* ===== 認証 ===== */
+$("lgBtn").onclick=async()=>{ const u=$("lgUser").value.trim(),p=$("lgPass").value; if(!u||!p){setS($("lgStatus"),"入力してください","err");return;}
+  setS($("lgStatus"),"処理中…","run"); const email=toEmail(u),pass=padPass(p);
+  try{ try{await signInWithEmailAndPassword(auth,email,pass);}catch(e1){ try{await createUserWithEmailAndPassword(auth,email,pass);}catch(e2){ if(e2.code==="auth/email-already-in-use") throw new Error("合言葉が違います"); throw e2; } } }
+  catch(err){ setS($("lgStatus"),"⚠ "+(err.message||err.code),"err"); } };
+$("logoutBtn").onclick=()=>signOut(auth);
+
+let CARDS={};
+onAuthStateChanged(auth, async(user)=>{
+  if(!user){ $("login").style.display="flex"; $("app").style.display="none"; return; }
+  $("login").style.display="none"; $("app").style.display="block";
+  const name=user.email.split("@")[0]; const admin=name===ADMIN;
+  $("who").textContent="ログイン中："+name+(admin?"（管理者）":"（権限なし）");
+  $("noadmin").style.display=admin?"none":"block"; $("editor").style.display=admin?"block":"none";
+  if(admin){ buildChips(); await reloadCards(); await loadCfg(); await loadCodesAdmin(); }
+});
+
+/* ===== カード一覧 ===== */
+async function reloadCards(){ const snap=await getDocs(collection(db,"masterCards")); CARDS={}; snap.forEach(d=>{ if(d.id[0]!=="_") CARDS[d.id]=d.data(); });
+  const ids=Object.keys(CARDS).sort(); $("picker").innerHTML=`<option value="__new">＋ 新規カードを作成</option>`+ids.map(id=>`<option value="${id}">${id}：${CARDS[id].name||""}</option>`).join("");
+  $("cardCount").textContent=`登録 ${ids.length} 枚`; loadForm("__new"); }
+$("picker").onchange=()=>loadForm($("picker").value);
+
+/* ===== チップUI ===== */
+function buildChips(){
+  const row=(cls,k,desc)=>`<label style="display:flex;gap:6px;width:100%;align-items:flex-start;margin-top:4px"><input type="checkbox" class="${cls}" value="${k}" style="width:auto;margin-top:3px"><span><b style="color:#ffd874">${k}</b> <span class="muted">${desc}</span></span></label>`;
+  $("kwChips").innerHTML=KEYWORDS.map(k=>row("kwc",k,KW_DESC[k]||"")).join("");
+  $("abilChips").innerHTML=ABILS.map(([k,l])=>row("abc",k,l)).join(""); }
+
+/* ===== ステップビルダー（起動型能力＝steps / スキル＝sSteps で共有）===== */
+function stepRow(s,i){
+  const condOpt=CONDS.map(([v,l])=>`<option value="${v}" ${s.cond===v?"selected":""}>${l}</option>`).join("");
+  const effOpt=EFFECTS.map(([v,l])=>`<option value="${v}" ${s.effect===v?"selected":""}>${l}</option>`).join("");
+  const needVal=s.cond&&s.cond.startsWith("dice");
+  return `<div class="step"><div class="row">
+    <div><label>もし(条件)</label><select data-i="${i}" data-f="cond">${condOpt}</select></div>
+    <div style="${needVal?'':'visibility:hidden'}"><label>値</label><input type="number" data-i="${i}" data-f="cval" value="${s.cval??4}"></div>
+  </div><div class="row">
+    <div><label>効果</label><select data-i="${i}" data-f="effect">${effOpt}</select></div>
+    <div><label>量（数字 or dice*1000）</label><input data-i="${i}" data-f="amount" value="${s.amount??""}"></div>
+  </div><button class="red" data-del="${i}" style="padding:3px 10px">このステップを削除</button></div>`;
+}
+function makeStepUI(arr,el){ el.innerHTML=arr.map((s,i)=>stepRow(s,i)).join(""); }
+function wireSteps(el,arr,re){ el.addEventListener("change",e=>{ const i=e.target.dataset.i,f=e.target.dataset.f; if(i==null) return; arr[i][f]=e.target.value; if(f==="cond") re(); });
+  el.addEventListener("click",e=>{ const d=e.target.dataset.del; if(d!=null){ arr.splice(+d,1); re(); } }); }
+let steps=[], sSteps=[];
+const renderSteps=()=>makeStepUI(steps,$("steps"));
+const renderSSteps=()=>makeStepUI(sSteps,$("sSteps"));
+wireSteps($("steps"),steps,renderSteps); wireSteps($("sSteps"),sSteps,renderSSteps);
+$("addStep").onclick=()=>{ steps.push({cond:"",effect:"damageFace",amount:"3000",cval:4}); renderSteps(); };
+$("addSStep").onclick=()=>{ sSteps.push({cond:"",effect:"draw",amount:"2",cval:4}); renderSSteps(); };
+$("actOn").onchange=()=>{ $("actBody").style.display=$("actOn").checked?"block":"none"; };
+function buildSteps(arr){ return arr.map(s=>{ const t=(s.amount||"").trim(); const amount=/^\d+$/.test(t)?parseInt(t,10):t; const step={then:{effect:s.effect,amount}}; if(s.cond){ step.if={type:s.cond}; if(s.cond.startsWith("dice")) step.if.value=parseInt(s.cval,10)||0; } return step; }); }
+function loadStepsFrom(list){ return (list||[]).map(s=>({cond:s.if?s.if.type:"",cval:s.if?s.if.value:4,effect:s.then.effect,amount:s.then.amount})); }
+
+/* ===== トリガー能力ビルダー（召喚時/死亡時など×自由ステップ）===== */
+const TRIGS=[["summon","召喚時"],["death","死亡時"],["turnStart","ターン開始時"],["attack","攻撃時"]];
+let trigBlocks=[];
+function trigStepRow(s,bi,si){
+  const condOpt=CONDS.map(([v,l])=>`<option value="${v}" ${s.cond===v?"selected":""}>${l}</option>`).join("");
+  const effOpt=EFFECTS.map(([v,l])=>`<option value="${v}" ${s.effect===v?"selected":""}>${l}</option>`).join("");
+  const needVal=s.cond&&s.cond.startsWith("dice");
+  return `<div class="step"><div class="row"><div><label>もし(条件)</label><select data-tb="${bi}" data-ts="${si}" data-tf="cond">${condOpt}</select></div>
+    <div style="${needVal?'':'visibility:hidden'}"><label>値</label><input type="number" data-tb="${bi}" data-ts="${si}" data-tf="cval" value="${s.cval??4}"></div></div>
+    <div class="row"><div><label>効果</label><select data-tb="${bi}" data-ts="${si}" data-tf="effect">${effOpt}</select></div>
+    <div><label>量(数字 or dice*1000)</label><input data-tb="${bi}" data-ts="${si}" data-tf="amount" value="${s.amount??""}"></div></div>
+    <button class="red" data-tdelstep="${bi}_${si}" style="padding:3px 8px">ステップ削除</button></div>`;
+}
+function renderTrigs(){ $("trigList").innerHTML=trigBlocks.map((b,bi)=>{
+  const trigOpt=TRIGS.map(([v,l])=>`<option value="${v}" ${b.trigger===v?"selected":""}>${l}</option>`).join("");
+  return `<div class="box" style="border:1px solid #2a3550;background:#0d1320">
+    <div class="row"><div><label>発動タイミング</label><select data-tbtrig="${bi}">${trigOpt}</select></div>
+      <div><label style="margin-top:18px"><input type="checkbox" data-tbdice="${bi}" ${b.usesDice?"checked":""} style="width:auto"> 🎲サイコロ</label></div></div>
+    ${b.steps.map((s,si)=>trigStepRow(s,bi,si)).join("")}
+    <button class="blue" data-tbaddstep="${bi}">＋効果ステップ</button>
+    <button class="red" data-tbdel="${bi}">この能力を削除</button></div>`; }).join(""); }
+$("trigAdd").onclick=()=>{ trigBlocks.push({trigger:"summon",usesDice:false,steps:[{cond:"",effect:"damageFace",amount:"3000",cval:4}]}); renderTrigs(); };
+$("trigList").addEventListener("change",e=>{ const t=e.target;
+  if(t.dataset.tbtrig!=null){ trigBlocks[+t.dataset.tbtrig].trigger=t.value; return; }
+  if(t.dataset.tbdice!=null){ trigBlocks[+t.dataset.tbdice].usesDice=t.checked; return; }
+  if(t.dataset.tb!=null){ const b=+t.dataset.tb,s=+t.dataset.ts,f=t.dataset.tf; trigBlocks[b].steps[s][f]=t.value; if(f==="cond") renderTrigs(); } });
+$("trigList").addEventListener("click",e=>{ const t=e.target;
+  if(t.dataset.tbaddstep!=null){ trigBlocks[+t.dataset.tbaddstep].steps.push({cond:"",effect:"damageFace",amount:"3000",cval:4}); renderTrigs(); return; }
+  if(t.dataset.tbdel!=null){ trigBlocks.splice(+t.dataset.tbdel,1); renderTrigs(); return; }
+  if(t.dataset.tdelstep!=null){ const [b,s]=t.dataset.tdelstep.split("_").map(Number); trigBlocks[b].steps.splice(s,1); renderTrigs(); } });
+function collectTriggers(){ return trigBlocks.filter(b=>b.steps&&b.steps.length).map(b=>{ const usesDice=b.usesDice||b.steps.some(s=>String(s.amount).includes("dice")||String(s.cond).startsWith("dice"));
+  return { trigger:b.trigger, usesDice, steps:buildSteps(b.steps) }; }); }
+function loadTriggers(list){ trigBlocks=(list||[]).map(tg=>({trigger:tg.trigger||"summon",usesDice:!!tg.usesDice,steps:loadStepsFrom(tg.steps)})); renderTrigs(); }
+
+/* ===== 画像 ===== */
+let curImg=null;
+$("fImg").onchange=()=>{ const f=$("fImg").files[0]; if(!f) return; const r=new FileReader();
+  r.onload=()=>{ const im=new Image(); im.onload=()=>{ const max=240,s=Math.min(1,max/Math.max(im.width,im.height)); const cw=Math.round(im.width*s),ch=Math.round(im.height*s);
+    const cv=document.createElement("canvas"); cv.width=cw; cv.height=ch; cv.getContext("2d").drawImage(im,0,0,cw,ch);
+    curImg=cv.toDataURL("image/jpeg",0.82); $("imgPrev").src=curImg; $("imgPrev").style.display="block"; }; im.src=r.result; };
+  r.readAsDataURL(f); };
+$("imgClear").onclick=()=>{ curImg=null; $("imgPrev").style.display="none"; $("fImg").value=""; };
+
+/* ===== フォーム読込/種類切替 ===== */
+function setType(t){ const isChar=t==="char"; $("atkWrap").style.display=isChar?"block":"none"; $("hpWrap").style.display=isChar?"block":"none"; $("charOnly").style.display=isChar?"block":"none"; $("skillFields").style.display=isChar?"none":"block"; }
+$("fType").onchange=()=>setType($("fType").value);
+
+function loadForm(id){ setS($("saveStatus"),""); steps=[];
+  if(id==="__new"){ $("fId").value=""; $("fId").readOnly=false; $("fName").value=""; $("fType").value="char"; $("fRar").value="N"; $("fCost").value=2; $("fAtk").value=2000; $("fHp").value=2000; $("fArt").value="✨"; $("fTxt").value=""; $("fTarget").value="none";
+    curImg=null; $("imgPrev").style.display="none"; document.querySelectorAll(".kwc,.abc").forEach(c=>c.checked=false); $("actOn").checked=false; $("actBody").style.display="none"; $("actName").value=""; $("actCost").value=2; $("actTap").checked=true; $("actDice").checked=false; sSteps=[]; $("sDice").checked=false; renderSSteps(); loadTriggers([]); setType("char"); renderSteps(); $("delBtn").style.display="none"; return; }
+  const d=CARDS[id]; $("fId").value=id; $("fId").readOnly=true; $("fName").value=d.name||""; $("fType").value=d.type||"char"; $("fRar").value=d.rarity||"N"; $("fCost").value=d.cost??1; $("fAtk").value=d.atk??0; $("fHp").value=d.hp??0; $("fArt").value=d.art||""; $("fTxt").value=d.txt||""; $("fTarget").value=d.target||"none";
+  curImg=d.img||null; if(curImg){ $("imgPrev").src=curImg; $("imgPrev").style.display="block"; } else $("imgPrev").style.display="none";
+  document.querySelectorAll(".kwc").forEach(c=>c.checked=(d.kw||[]).includes(c.value));
+  document.querySelectorAll(".abc").forEach(c=>c.checked=(d.abil||[]).includes(c.value));
+  const ab=d.activated; $("actOn").checked=!!ab; $("actBody").style.display=ab?"block":"none";
+  if(ab){ $("actName").value=ab.name||""; $("actCost").value=ab.cost??2; $("actTap").checked=!!ab.tapsAttack; $("actDice").checked=!!ab.usesDice;
+    steps=(ab.steps||[]).map(s=>({cond:s.if?s.if.type:"",cval:s.if?s.if.value:4,effect:s.then.effect,amount:s.then.amount})); }
+  else{ $("actName").value=""; $("actCost").value=2; $("actTap").checked=true; $("actDice").checked=false; }
+  sSteps=loadStepsFrom(d.steps); $("sDice").checked=!!d.usesDice; renderSSteps(); loadTriggers(d.triggers);
+  setType(d.type||"char"); renderSteps(); $("delBtn").style.display="inline-block"; }
+
+/* ===== 保存 ===== */
+function collectActivated(){ const a={ name:$("actName").value.trim()||"技", cost:parseInt($("actCost").value,10)||0, tapsAttack:$("actTap").checked, usesDice:$("actDice").checked, steps:[] };
+  a.steps=steps.map(s=>{ const amtNum=/^\d+$/.test((s.amount||"").trim()); const amount=amtNum?parseInt(s.amount,10):(s.amount||"");
+    const step={ then:{ effect:s.effect, amount } }; if(s.cond){ step.if={ type:s.cond }; if(s.cond.startsWith("dice")) step.if.value=parseInt(s.cval,10)||0; } return step; });
+  if(a.usesDice===false && steps.some(s=>String(s.amount).includes("dice")||String(s.cond).startsWith("dice"))) a.usesDice=true;
+  return a; }
+$("saveBtn").onclick=async()=>{ const id=$("fId").value.trim(); if(!/^[a-zA-Z0-9_]+$/.test(id)){ setS($("saveStatus"),"IDは半角英数で入力してください","err"); return; }
+  const type=$("fType").value; const card={ name:$("fName").value.trim(), type, cost:parseInt($("fCost").value,10)||0, rarity:$("fRar").value, art:$("fArt").value.trim()||"❓" };
+  if(type==="char"){ card.atk=parseInt($("fAtk").value,10)||0; card.hp=parseInt($("fHp").value,10)||0;
+    card.kw=[...document.querySelectorAll(".kwc:checked")].map(c=>c.value); card.abil=[...document.querySelectorAll(".abc:checked")].map(c=>c.value);
+    if($("actOn").checked) card.activated=collectActivated();
+    const tg=collectTriggers(); if(tg.length) card.triggers=tg; }
+  else { card.txt=$("fTxt").value.trim(); card.target=$("fTarget").value;
+    const ss=buildSteps(sSteps); if(ss.length) card.steps=ss;
+    card.usesDice = $("sDice").checked || ss.some(s=>String(s.then.amount).includes("dice")||(s.if&&String(s.if.type).startsWith("dice"))); }
+  if(curImg) card.img=curImg;
+  setS($("saveStatus"),"保存中…","run");
+  try{ await setDoc(doc(db,"masterCards",id), card); setS($("saveStatus"),"✅ 保存しました：" +id,"ok"); await reloadCards(); $("picker").value=id; loadForm(id); }
+  catch(err){ setS($("saveStatus"),"⚠ "+(err.message||err)+"（管理者でない/ルール未設定の可能性）","err"); } };
+$("delBtn").onclick=async()=>{ const id=$("fId").value.trim(); if(!id||id==="__new") return; if(!confirm(`${id} を削除しますか？`)) return;
+  try{ await deleteDoc(doc(db,"masterCards",id)); setS($("saveStatus"),"🗑 削除しました","ok"); await reloadCards(); }catch(err){ setS($("saveStatus"),"⚠ "+(err.message||err),"err"); } };
+
+/* ===== Gemini 生成 ===== */
+$("gKey").value=localStorage.getItem("cc_gkey")||"";
+$("gBtn").onclick=async()=>{ const key=$("gKey").value.trim(); localStorage.setItem("cc_gkey",key); const theme=$("gPrompt").value.trim(); const model=$("gModel").value;
+  if(!key){ setS($("gStatus"),"APIキーを入れてください","err"); return; } if(!theme){ setS($("gStatus"),"テーマを入れてください","err"); return; }
+  setS($("gStatus"),"生成中…","run"); $("gBtn").disabled=true;
+  const abilList=ABILS.map(([k,l])=>`${k}(${l})`).join(" / ");
+  const prompt=`対戦カードゲームのキャラカードを1枚デザインし、JSONのみ出力。テーマ: ${theme}
+形式:{"name":"日本語10字以内","cost":0〜8の整数,"atk":1000単位の整数(例6000),"hp":1000単位の整数(例6000),"art":"絵文字1つ","rarity":"N|R|SR|SSR","kw":[],"abil":[]}
+kwは0〜2個: 速攻,守護,貫通,再生,二回攻撃。 abilは0〜2個キーで: ${abilList}
+バランス: atk+hp ≒ cost*2000+1000〜2000。強い能力ほど数値控えめ。JSON以外禁止。`;
+  try{ const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
+      {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.9,responseMimeType:"application/json"}})});
+    if(!res.ok){ const t=await res.text(); throw new Error("API "+res.status+": "+t.slice(0,150)); }
+    const data=await res.json(); let txt=data.candidates?.[0]?.content?.parts?.[0]?.text||""; txt=txt.replace(/```json/gi,"").replace(/```/g,"").trim(); const m=txt.match(/\{[\s\S]*\}/); if(m) txt=m[0]; const o=JSON.parse(txt);
+    // フォームへ反映
+    $("picker").value="__new"; loadForm("__new"); $("fType").value="char"; setType("char");
+    $("fId").value="gen_"+Date.now().toString(36); $("fName").value=(o.name||"新カード").slice(0,10); $("fRar").value=["N","R","SR","SSR"].includes(o.rarity)?o.rarity:"R";
+    $("fCost").value=Math.max(0,Math.min(8,parseInt(o.cost,10)||3)); $("fAtk").value=Math.max(0,parseInt(o.atk,10)||2000); $("fHp").value=Math.max(1,parseInt(o.hp,10)||2000); $("fArt").value=(typeof o.art==="string"&&o.art.trim())?[...o.art.trim()][0]:"✨";
+    const kws=Array.isArray(o.kw)?o.kw.filter(k=>KEYWORDS.includes(k)):[]; document.querySelectorAll(".kwc").forEach(c=>c.checked=kws.includes(c.value));
+    const abs=Array.isArray(o.abil)?o.abil.filter(k=>ABILS.some(a=>a[0]===k)):[]; document.querySelectorAll(".abc").forEach(c=>c.checked=abs.includes(c.value));
+    setS($("gStatus"),"✅ 生成しました。内容を確認して「保存」を押してください。","ok");
+  }catch(err){ setS($("gStatus"),"⚠ "+(err.message||err),"err"); }finally{ $("gBtn").disabled=false; } };
+
+/* ===== ゲーム設定 ===== */
+async function loadCfg(){ const def={startLife:10000,scale:1000,deckSize:40,maxCopies:4,boardMax:5,energyIncome:1,energyCap:15};
+  let c=def; try{ const s=await getDoc(doc(db,"config","game")); if(s.exists()) c=Object.assign(def,s.data()); }catch(e){}
+  $("cLife").value=c.startLife; $("cScale").value=c.scale; $("cDeck").value=c.deckSize; $("cCopies").value=c.maxCopies; $("cBoard").value=c.boardMax; $("cInc").value=c.energyIncome; $("cCap").value=c.energyCap; }
+$("cfgSave").onclick=async()=>{ const c={ startLife:+$("cLife").value, scale:+$("cScale").value, deckSize:+$("cDeck").value, maxCopies:+$("cCopies").value, boardMax:+$("cBoard").value, energyIncome:+$("cInc").value, energyCap:+$("cCap").value };
+  setS($("cfgStatus"),"保存中…","run"); try{ await setDoc(doc(db,"config","game"),c); setS($("cfgStatus"),"✅ 設定を保存しました（次の対戦から反映）","ok"); }catch(err){ setS($("cfgStatus"),"⚠ "+(err.message||err),"err"); } };
+
+/* ===== 引き換えコード管理 ===== */
+let codeRows=[];
+function renderCodes(){ $("codeList").innerHTML=codeRows.map((r,i)=>`<div class="row" style="align-items:flex-end;margin-top:4px"><div><label>コード名</label><input data-ci="${i}" data-cf="code" value="${(r.code||"").replace(/"/g,"&quot;")}"></div><div><label>コイン額</label><input type="number" data-ci="${i}" data-cf="amount" value="${r.amount??0}"></div><button class="red" data-delc="${i}" style="padding:4px 10px">削除</button></div>`).join(""); }
+$("codeList").addEventListener("change",e=>{ const i=e.target.dataset.ci,f=e.target.dataset.cf; if(i==null) return; codeRows[i][f]= f==="amount"?(parseInt(e.target.value,10)||0):e.target.value; });
+$("codeList").addEventListener("click",e=>{ const d=e.target.dataset.delc; if(d!=null){ codeRows.splice(+d,1); renderCodes(); } });
+$("addCode").onclick=()=>{ codeRows.push({code:"",amount:900}); renderCodes(); };
+async function loadCodesAdmin(){ let map={}; try{ const s=await getDoc(doc(db,"config","codes")); if(s.exists()&&s.data().map) map=s.data().map; }catch(e){}
+  codeRows=Object.entries(map).map(([code,amount])=>({code,amount}));
+  if(!codeRows.length) codeRows=[{code:"せきやま",amount:900},{code:"ほたて",amount:1800},{code:"くらずし",amount:2700}]; // 初期テンプレ
+  renderCodes(); }
+$("saveCodes").onclick=async()=>{ const map={}; codeRows.forEach(r=>{ const c=(r.code||"").trim(); if(c) map[c]=r.amount||0; });
+  setS($("codesStatus"),"保存中…","run"); try{ await setDoc(doc(db,"config","codes"),{map}); setS($("codesStatus"),"✅ コードを保存しました","ok"); }catch(err){ setS($("codesStatus"),"⚠ "+(err.message||err),"err"); } };
+</script>
+</body>
+</html>
