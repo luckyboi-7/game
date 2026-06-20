@@ -6,7 +6,7 @@
 <title>CHARACTER CLASH（クラウド版）</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Potta+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Potta+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Zen Maru Gothic',"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-weight:500;
@@ -43,6 +43,7 @@
   .card .cbg .bgemoji{font-size:44px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}
   .cbg.rN{background:linear-gradient(160deg,#3a4a66,#222b3c);} .cbg.rR{background:linear-gradient(160deg,#2a4a78,#16243c);}
   .cbg.rSR{background:linear-gradient(160deg,#5a3a78,#2a1840);} .cbg.rSSR{background:linear-gradient(160deg,#8a6a1a,#3a2a08);}
+  .cbg.rGR{background:linear-gradient(135deg,#b86fff,#ff5db4 50%,#ffd45a);}
   .card.skill{border-color:#9b78c0;}
   .card .cost{position:absolute;top:4px;left:4px;width:25px;height:25px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#bff0ff,#2aa0e0);color:#03263a;font-weight:bold;font-size:15px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.5);z-index:3;}
   .card .namebar{position:absolute;left:0;right:0;bottom:18px;background:linear-gradient(0deg,rgba(0,0,0,.88),rgba(0,0,0,.4));color:#fff;font-size:10px;font-weight:bold;text-align:center;padding:2px 1px;text-shadow:0 1px 2px #000;z-index:2;line-height:1.15;}
@@ -59,6 +60,10 @@
   .card .frozenmark{position:absolute;top:3px;right:4px;font-size:13px;z-index:3;}
   .card .skillmark{position:absolute;top:3px;left:50%;transform:translateX(-50%);font-size:9px;color:#ffd;background:rgba(120,60,30,.9);border-radius:6px;padding:0 4px;z-index:3;}
   .rarN{} .rarR{border-color:#5fa8ff;} .rarSR{border-color:#c08bff;} .rarSSR{border-color:#ffcf5a;box-shadow:0 0 10px rgba(255,207,90,.5);}
+  .rarGR{border-color:#ff7be0;animation:grGlow 1.8s ease-in-out infinite;}
+  @keyframes grGlow{0%,100%{box-shadow:0 0 8px #ff7be0;}50%{box-shadow:0 0 18px #ffd45a,0 0 26px #ff7be0;}}
+  .card.barriered{box-shadow:0 0 0 2px #6fe0ff,0 0 12px rgba(111,224,255,.6);}
+  .card .barriermark{position:absolute;top:3px;right:22px;font-size:13px;z-index:4;filter:drop-shadow(0 0 3px #6fe0ff);}
   /* 手札ホバー浮遊・ドラッグ */
   .hand .card:hover{transform:translateY(-20px) scale(1.1) rotate(-2deg);box-shadow:0 14px 26px rgba(0,0,0,.6);z-index:20;}
   .card.dragging{transition:none;box-shadow:0 18px 32px rgba(0,0,0,.75);}
@@ -235,6 +240,135 @@
   .fchip.on{background:#ffd874;color:#3a2a05;font-weight:800;border-color:#ffd874;}
   .mini .rbonus{font-size:8px;color:#7bff9b;text-align:center;}
   .warnbox{background:rgba(180,60,60,.18);border:1px solid #b35;border-radius:10px;padding:7px 10px;color:#ffb0b0;font-size:12px;text-align:center;}
+
+  /* ==========================================================================
+     ✨✨ PREMIUM TCG VISUAL LAYER — ダークトーン×発光（CSSのみ／ロジック非干渉）✨✨
+     ========================================================================== */
+  :root{ --glass:rgba(16,20,32,.62); --glass-brd:rgba(255,255,255,.10); --neon:#5aa8ff; }
+
+  /* ---- 奥行きのある盤面背景＋周辺減光＋紋様 ---- */
+  body{ background:radial-gradient(125% 95% at 50% -12%, #1b2a47 0%, #0e1322 46%, #070a12 100%) fixed; color:#e8edf6; }
+  body::before{ content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(closest-side at 50% 42%, transparent 58%, rgba(0,0,0,.5) 100%),
+      repeating-linear-gradient(118deg, rgba(120,170,255,.020) 0 2px, transparent 2px 26px),
+      radial-gradient(40% 30% at 12% 8%, rgba(90,130,255,.10), transparent 70%),
+      radial-gradient(40% 30% at 88% 92%, rgba(150,90,255,.10), transparent 70%); }
+  #game{ position:relative; z-index:1; }
+
+  /* インパクトのある数字フォント */
+  .card .stats, .card .cost, .stat .num, .stat, #slot .reel .sym, .coinpill, .coinbadge{ font-family:'Oswald','Zen Maru Gothic',sans-serif; }
+
+  /* ==================== カード：立体・発光・ホロ反射 ==================== */
+  .card{ border:none; border-radius:13px; background:#0b1120; transform-origin:center;
+    transition: transform .16s cubic-bezier(.2,.8,.25,1.25), box-shadow .25s ease, filter .2s; }
+  .card .cbg{ border-radius:12px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -28px 40px rgba(0,0,0,.45); }
+  /* ホロ反射（::before。sickの::afterとは衝突しない）*/
+  .card::before{ content:""; position:absolute; inset:0; border-radius:12px; z-index:1; pointer-events:none;
+    background:
+      radial-gradient(130px 130px at var(--sx,30%) var(--sy,20%), rgba(255,255,255,.28), transparent 60%),
+      linear-gradient(115deg, transparent 38%, rgba(255,255,255,.10) 49%, transparent 60%);
+    mix-blend-mode:overlay; opacity:.32; transition:opacity .2s; }
+  .card:hover::before{ opacity:.85; }
+
+  /* レアリティ発光（外周グロー＋内側リング。state表示はoutline/filterで別管理）*/
+  .rarN{   box-shadow:0 6px 16px rgba(0,0,0,.6), inset 0 0 0 2px #5b6b88; }
+  .rarR{   box-shadow:0 6px 18px rgba(0,0,0,.6), 0 0 12px rgba(95,168,255,.30), inset 0 0 0 2px #5fa8ff; }
+  .rarSR{  box-shadow:0 6px 20px rgba(0,0,0,.6), 0 0 18px rgba(192,139,255,.45), inset 0 0 0 2px #c08bff; }
+  .rarSSR{ animation:glowSSR 2.6s ease-in-out infinite; }
+  .rarGR{  animation:glowGR 1.9s ease-in-out infinite; }
+  @keyframes glowSSR{ 0%,100%{ box-shadow:0 6px 20px rgba(0,0,0,.6), 0 0 14px rgba(255,207,90,.45), inset 0 0 0 2px #ffcf5a; }
+    50%{ box-shadow:0 6px 22px rgba(0,0,0,.6), 0 0 30px rgba(255,207,90,.9), inset 0 0 0 2px #fff0b0; } }
+  @keyframes glowGR{ 0%,100%{ box-shadow:0 6px 22px rgba(0,0,0,.6), 0 0 18px rgba(255,123,224,.55), inset 0 0 0 2px #ff7be0; }
+    50%{ box-shadow:0 6px 28px rgba(0,0,0,.6), 0 0 40px rgba(255,123,224,.95), 0 0 60px rgba(255,200,120,.45), inset 0 0 0 2px #ffd0f4; } }
+  /* レアリティ別アート地（絵文字カード）*/
+  .cbg.rN{background:linear-gradient(160deg,#33405c,#1a2233);} .cbg.rR{background:linear-gradient(160deg,#1f3f72,#0f1d33);}
+  .cbg.rSR{background:linear-gradient(160deg,#4a2f72,#1f1233);} .cbg.rSSR{background:linear-gradient(160deg,#7a5a14,#2f2206);}
+  .cbg.rGR{background:linear-gradient(135deg,#7a3fb0,#c23a86 50%,#caa238);}
+
+  /* マナ宝珠・ステータス・名前バー */
+  .card .cost{ background:radial-gradient(circle at 34% 26%, #d6f0ff, #2a8de0 68%, #0a4a8a); border:2px solid rgba(255,255,255,.85);
+    box-shadow:0 0 9px rgba(60,160,255,.75), inset 0 1px 2px rgba(255,255,255,.6); font-weight:700; }
+  .card .stats{ padding:0 6px 1px; }
+  .card .stats .atk{ color:#ffd34d; font-weight:700; font-size:15px; text-shadow:0 0 7px rgba(255,180,40,.75),0 1px 2px #000; }
+  .card .stats .hp{ color:#7bff9b; font-weight:700; font-size:15px; text-shadow:0 0 7px rgba(80,255,150,.7),0 1px 2px #000; }
+  .card .namebar{ background:linear-gradient(0deg, rgba(0,0,0,.92), rgba(0,0,0,.18)); letter-spacing:.4px; font-weight:700; }
+  .card .kw{ color:#ffe79a; text-shadow:0 0 6px rgba(255,200,80,.6),0 1px 2px #000; }
+
+  /* state（rarityのbox-shadowを壊さないようoutline/filterで表現）*/
+  .card.canact{ animation:pulseAct 1.3s ease-in-out infinite; }
+  @keyframes pulseAct{ 0%,100%{ filter:drop-shadow(0 0 3px #7bff9b); } 50%{ filter:drop-shadow(0 0 11px #7bff9b); } }
+  .card.selected{ outline:3px solid #ffd874; outline-offset:2px; transform:translateY(-8px) scale(1.06); z-index:6; animation:pulseSel 1s infinite; }
+  @keyframes pulseSel{ 0%,100%{ filter:drop-shadow(0 0 4px #ffd874); } 50%{ filter:drop-shadow(0 0 15px #ffd874); } }
+  .card.target{ outline:3px solid #ff6b6b; outline-offset:2px; cursor:crosshair; animation:pulseTgt 1s infinite; }
+  @keyframes pulseTgt{ 0%,100%{ filter:drop-shadow(0 0 4px #ff6b6b); } 50%{ filter:drop-shadow(0 0 16px #ff6b6b); } }
+  .card.guard{ outline:2px solid #ffd874; outline-offset:1px; }
+  .card.barriered{ outline:2px solid #6fe0ff; outline-offset:1px; filter:drop-shadow(0 0 9px rgba(111,224,255,.7)); }
+  .card.frozen{ filter:brightness(.82) saturate(.6) hue-rotate(-8deg); outline:2px solid #9ad6ff; outline-offset:1px; }
+
+  /* 手札ホバー＝3Dチルト / 盤面ホバー＝軽いチルト */
+  .hand .card:hover{ transform: translateY(-16px) scale(1.1) perspective(900px) rotateY(var(--tx,0deg)) rotateX(var(--ty,0deg)); box-shadow:0 18px 34px rgba(0,0,0,.65); z-index:30; }
+  .board .card:hover{ transform: perspective(900px) rotateY(var(--tx,0deg)) rotateX(var(--ty,0deg)) translateY(-4px) scale(1.05); z-index:25; }
+
+  /* ==================== 盤面・スロット ==================== */
+  .board{ background:linear-gradient(180deg, rgba(22,30,50,.40), rgba(8,12,22,.55)); border:1px solid rgba(255,255,255,.06);
+    border-radius:18px; box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 10px 34px rgba(0,0,0,.45); }
+  .board.opp{ background:linear-gradient(180deg, rgba(120,40,50,.16), rgba(8,12,22,.5)); }
+  .board.act{ background:linear-gradient(180deg, rgba(40,90,150,.18), rgba(8,12,22,.5)); }
+  .board.act.dropactive{ box-shadow:inset 0 0 0 2px #7bff9b, 0 0 26px rgba(123,255,155,.5); background:linear-gradient(180deg, rgba(50,150,100,.3), rgba(8,12,22,.5)); }
+  .slot{ border:none; border-radius:12px; color:rgba(150,195,255,.45); position:relative; overflow:hidden;
+    background:linear-gradient(180deg, rgba(40,70,120,.14), rgba(10,16,30,.3));
+    box-shadow:inset 0 0 0 1.5px rgba(90,160,255,.4), inset 0 0 22px rgba(60,120,220,.16); animation:slotPulse 3.2s ease-in-out infinite; }
+  @keyframes slotPulse{ 0%,100%{ box-shadow:inset 0 0 0 1.5px rgba(90,160,255,.30), inset 0 0 18px rgba(60,120,220,.12); }
+    50%{ box-shadow:inset 0 0 0 1.5px rgba(120,180,255,.55), inset 0 0 28px rgba(80,150,255,.28); } }
+  .slot::after{ content:""; position:absolute; inset:0; background:repeating-linear-gradient(45deg, rgba(120,170,255,.05) 0 6px, transparent 6px 12px); }
+
+  /* ==================== すりガラスUI ==================== */
+  .overlay{ background:rgba(8,11,20,.74); backdrop-filter:blur(11px) saturate(1.15); -webkit-backdrop-filter:blur(11px) saturate(1.15); }
+  .panel,.seccard,#popup .pop,#detail .panel,.newsbar{ background:var(--glass)!important; backdrop-filter:blur(12px) saturate(1.2); -webkit-backdrop-filter:blur(12px) saturate(1.2);
+    border:1px solid var(--glass-brd); box-shadow:0 12px 42px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07); border-radius:16px; }
+  .sidebar{ background:rgba(12,18,32,.55); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.07);
+    border-radius:14px; box-shadow:0 6px 22px rgba(0,0,0,.4); }
+  .sidebar .num{ text-shadow:0 0 8px currentColor, 0 1px 2px #000; }
+  .hand{ background:linear-gradient(180deg, rgba(14,20,34,.35), rgba(6,10,18,.5)); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.05); border-radius:16px; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
+  #log{ background:rgba(8,12,22,.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.06); }
+  .topbar{ backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+  .bottomnav{ backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  #detailArt{ border:1px solid rgba(255,255,255,.08); box-shadow:inset 0 0 30px rgba(0,0,0,.5), 0 0 18px rgba(90,140,255,.15); }
+
+  /* ボタン：光沢＋発光 */
+  button{ position:relative; }
+  button.green,button.blue,button.gray{ box-shadow:0 3px 0 rgba(0,0,0,.35), 0 5px 16px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.25); }
+  button.green{ background:linear-gradient(180deg,#62e29a,#2aa866); } button.blue{ background:linear-gradient(180deg,#6fb6ff,#3a7fe0); }
+  button:hover:not(:disabled){ filter:brightness(1.12) saturate(1.1); }
+
+  /* サイドバーのターゲット表示 */
+  .sidebar.facetarget{ outline:3px solid #ff6b6b; outline-offset:2px; box-shadow:0 0 22px rgba(255,90,90,.6); animation:none; }
+
+  /* ==================== 強化VFX ==================== */
+  @keyframes cardEnter{ 0%{ opacity:0; transform:translateY(26px) scale(.4) rotate(-10deg); }
+    55%{ opacity:1; transform:translateY(-6px) scale(1.12) rotate(3deg); } 75%{ transform:translateY(2px) scale(.98) rotate(-1deg); }
+    100%{ transform:translateY(0) scale(1) rotate(0); } }
+  .card.enter{ animation:cardEnter .46s cubic-bezier(.2,.9,.3,1.5), summonGlow .6s ease; }
+  @keyframes summonGlow{ 0%{ filter:brightness(2.6) drop-shadow(0 0 18px #8fc0ff); } 45%{ filter:brightness(1.4) drop-shadow(0 0 10px #8fc0ff); } 100%{ filter:none; } }
+  @keyframes attackLunge{ 0%{ transform:translateY(0) scale(1); } 16%{ transform:translateY(8px) scale(.9); }
+    52%{ transform:translateY(-34px) scale(1.2); } 100%{ transform:translateY(0) scale(1); } }
+  .card.attack-anim{ animation:attackLunge .34s cubic-bezier(.2,.9,.25,1.35); z-index:30; }
+  @keyframes screenShake{ 0%,100%{transform:translate(0,0)} 12%{transform:translate(-11px,5px) rotate(-.8deg)} 28%{transform:translate(10px,-6px) rotate(.7deg)}
+    44%{transform:translate(-8px,4px)} 60%{transform:translate(7px,5px)} 78%{transform:translate(-4px,-2px)} }
+  body.shaking{ animation:screenShake .42s cubic-bezier(.36,.07,.19,.97); }
+  .dmgpop{ font-family:'Oswald',sans-serif; font-weight:700; font-size:26px; color:#ff6b6b; text-shadow:0 2px 6px #000,0 0 10px rgba(255,60,60,.8); }
+  @keyframes dmgPop{ 0%{opacity:0;transform:translateY(10px) scale(.5)} 22%{opacity:1;transform:translateY(-10px) scale(1.4)} 100%{opacity:0;transform:translateY(-58px) scale(1)} }
+  .dmgpop{ animation:dmgPop 1s cubic-bezier(.2,.8,.3,1.3) forwards; }
+  /* 破壊：衝撃波リング＋赤い粒子 */
+  .death-ring{ position:fixed; width:14px; height:14px; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:88;
+    border:3px solid rgba(255,95,95,.95); box-shadow:0 0 18px rgba(255,80,80,.85); animation:deathRing .62s cubic-bezier(.2,.7,.3,1) forwards; }
+  @keyframes deathRing{ 0%{ width:14px;height:14px;opacity:1; } 100%{ width:150px;height:150px;opacity:0;border-width:1px; } }
+  .death-p{ position:fixed; width:7px; height:7px; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:88;
+    background:radial-gradient(circle,#ffe0e0,#ff4040 60%,transparent); box-shadow:0 0 8px #ff5050; animation:deathP .62s ease-out forwards; }
+  @keyframes deathP{ 0%{ opacity:1; } 100%{ transform:translate(calc(-50% + var(--dx,0)),calc(-50% + var(--dy,0))) scale(.2); opacity:0; } }
+
 </style>
 </head>
 <body>
@@ -536,10 +670,10 @@ const opp=()=>G[other(G.turn)];
 function log(t,who="sys"){ const el=$("log"); el.innerHTML+=`<div class="${who}">${t}</div>`; el.scrollTop=el.scrollHeight; }
 
 function inst(id){ const c=CARDS[id]; return {uid:uid++,id,atk:effStat(id,c.atk),hp:effStat(id,c.hp),maxHp:effStat(id,c.hp),buff:0,
-  summonSick:!(c.kw||[]).includes("速攻"),attacksLeft:(c.kw||[]).includes("攻撃不可")?0:((c.kw||[]).includes("速攻")?((c.kw||[]).includes("二回攻撃")?2:1):0),kw:(c.kw||[]).slice(),abil:(c.abil||[]).slice(),usedSkill:false,frozen:false,_lastDmg:0}; }
+  summonSick:!(c.kw||[]).includes("速攻"),attacksLeft:(c.kw||[]).includes("攻撃不可")?0:((c.kw||[]).includes("速攻")?((c.kw||[]).includes("二回攻撃")?2:1):0),kw:(c.kw||[]).slice(),abil:(c.abil||[]).slice(),usedSkill:false,frozen:false,barrier:false,_lastDmg:0}; }
 function newPlayer(deckIds){ const d=(deckIds&&deckIds.length?deckIds:Object.keys(collection_).slice(0,CFG.deckSize)).filter(id=>CARDS[id]).map(id=>({id}));
   for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
-  return {life:CFG.startLife,energy:0,deck:d,hand:[],board:[],grave:[],firstDone:false}; }
+  return {life:CFG.startLife,energy:0,energyDebt:0,deck:d,hand:[],board:[],grave:[],firstDone:false}; }
 function draw(key,n=1){ const p=G[key]; for(let k=0;k<n;k++){ if(p.deck.length===0){ endGame(other(key),`${key}の山札切れ`); return; } p.hand.push(p.deck.shift()); } }
 
 /* ===== 効果エンジン（if→then のデータ駆動。サイコロ・新効果は後から追加可）===== */
@@ -549,33 +683,45 @@ function evalAmount(a,ctx){ if(typeof a==="number") return a; if(typeof a!=="str
   const m=a.match(/^dice(?:\s*([*+])\s*(\d+))?$/); if(m){ const v=ctx.dice||0; if(!m[1]) return v; return m[1]==="*"?v*parseInt(m[2],10):v+parseInt(m[2],10);} return parseInt(a,10)||0; }
 function checkCond(cond,ctx,me,foe,self){ if(!cond||cond.type==="always") return true;
   switch(cond.type){ case"dice>=":return ctx.dice>=cond.value; case"dice<=":return ctx.dice<=cond.value; case"dice==":return ctx.dice===cond.value;
-    case"enemyHasChar":return foe.board.length>0; case"selfDamaged":return self&&self.hp<self.maxHp; case"boardSpace":return me.board.length<CFG.boardMax; default:return true; } }
+    case"enemyHasChar":return foe.board.length>0; case"selfDamaged":return self&&self.hp<self.maxHp; case"boardSpace":return me.board.length<CFG.boardMax; case"graveMin":return (me.grave||[]).length>=cond.value; default:return true; } }
 function autoTargetEnemy(foe){ return foe.board.length? [...foe.board].sort((a,b)=>(b.atk+b.buff)-(a.atk+a.buff))[0] : null; }
+function applyAtk(c,amt,dur){ if(!c) return; if(dur==="temp") c.buff=(c.buff||0)+amt; else c.atk=Math.max(0,c.atk+amt); }   // temp=次の自分のターン開始まで / perm=永続
+function durLbl(dur){ return dur==="temp"?"（次の自ターンまで）":""; }
 function applyEffect(ef,ctx,meKey,me,foe,self,chosen){ const amt=evalAmount(ef.amount,ctx); const nm=self?(CARDS[self.id].name):"効果";
   switch(ef.effect){
     case"damageFace": foe.life-=amt; log(`【${nm}】相手に${amt}ダメージ`,"fx"); break;
-    case"damageTarget":{ const t=chosen||autoTargetEnemy(foe); if(t){ t.hp-=amt; log(`【${nm}】${CARDS[t.id].name}に${amt}`,"fx"); } } break;
-    case"damageAllEnemies": foe.board.forEach(c=>c.hp-=amt); log(`【${nm}】相手全体に${amt}`,"fx"); break;
+    case"damageTarget":{ const t=chosen||autoTargetEnemy(foe); if(t){ if(shieldBlocks(t)){ log(`【${nm}】${CARDS[t.id].name}はバリアで防いだ🛡`,"fx"); } else { t.hp-=amt; log(`【${nm}】${CARDS[t.id].name}に${amt}`,"fx"); } } } break;
+    case"damageAllEnemies": foe.board.forEach(c=>{ if(!shieldBlocks(c)) c.hp-=amt; }); log(`【${nm}】相手全体に${amt}`,"fx"); break;
     case"draw": draw(meKey,amt); log(`【${nm}】${amt}枚ドロー`,"fx"); break;
     case"gainEnergy": me.energy=Math.min(CFG.energyCap,me.energy+amt); log(`【${nm}】エナジー+${amt}`,"fx"); break;
     case"healLife": me.life+=amt; log(`【${nm}】あなたのライフ+${amt}`,"fx"); break;
     case"freezeTarget": { const t=chosen||autoTargetEnemy(foe); if(t){ t.frozen=true; t.attacksLeft=0; log(`【${nm}】${CARDS[t.id].name}を足止め⛓`,"fx"); } } break;
     case"freezeAll": foe.board.forEach(c=>{ c.frozen=true; c.attacksLeft=0; }); log(`【${nm}】相手全体を足止め⛓`,"fx"); break;
     case"drainEnergy": foe.energy=Math.max(0,foe.energy-amt); log(`【${nm}】相手のエナジー-${amt}`,"fx"); break;
-    case"buffSelf": if(self){ self.atk+=amt; self.maxHp+=amt; self.hp+=amt; log(`【${nm}】+${amt}/+${amt}`,"fx"); } break;
-    case"buffAllyAtk": me.board.forEach(c=>c.atk+=amt); log(`【${nm}】味方ATK+${amt}`,"fx"); break;
+    case"buffSelf": if(self){ if(ef.dur==="temp"){ self.buff=(self.buff||0)+amt; log(`【${nm}】今ターン ATK+${amt}`,"fx"); } else { self.atk+=amt; self.maxHp+=amt; self.hp+=amt; log(`【${nm}】+${amt}/+${amt}（永続）`,"fx"); } } break;
+    case"buffAllyAtk": me.board.forEach(c=>applyAtk(c,amt,ef.dur)); log(`【${nm}】味方全体のATK+${amt}${durLbl(ef.dur)}`,"fx"); break;
+    case"buffAtkTarget":  { const t=chosen; if(t){ applyAtk(t,amt,ef.dur); log(`【${nm}】${CARDS[t.id].name}のATK+${amt}${durLbl(ef.dur)}`,"fx"); } } break;
+    case"debuffAtkTarget":{ const t=chosen||autoTargetEnemy(foe); if(t){ applyAtk(t,-amt,ef.dur); log(`【${nm}】${CARDS[t.id].name}のATK−${amt}${durLbl(ef.dur)}`,"fx"); } } break;
+    case"debuffAtkAll":   foe.board.forEach(c=>applyAtk(c,-amt,ef.dur)); log(`【${nm}】相手全体のATK−${amt}${durLbl(ef.dur)}`,"fx"); break;
     case"healAlly":{ const t=chosen; if(t){ t.hp=Math.min(t.maxHp,t.hp+amt); log(`【${nm}】${CARDS[t.id].name}回復`,"fx"); } } break;
     case"healAllAllies": me.board.forEach(c=>c.hp=Math.min(c.maxHp,c.hp+amt)); log(`【${nm}】味方全体回復`,"fx"); break;
-    case"summonToken": if(me.board.length<CFG.boardMax){ me.board.push(inst("_token")); log(`【${nm}】子分召喚`,"fx"); } break;
+    case"summonToken": break;   // 子分は廃止（無効）
     case"lifestealLast": if(self){ me.life+=self._lastDmg||0; log(`【${nm}】吸血+${self._lastDmg||0}`,"fx"); } break;
     // ===== 墓地 =====
     case"reviveLast":      { const n=Math.max(1,amt||1); for(let i=0;i<n;i++) reviveFrom(meKey,me,"last"); } break;
     case"reviveStrongest": { const n=Math.max(1,amt||1); for(let i=0;i<n;i++) reviveFrom(meKey,me,"strong"); } break;
     case"reviveRandom":    { const n=Math.max(1,amt||1); for(let i=0;i<n;i++) reviveFrom(meKey,me,"rand"); } break;
     case"sacrificeSelf":   if(self){ self.hp=0; log(`【${nm}】自身を生贄に`,"fx"); } break;
-    case"destroyTarget":   { const t=chosen||autoTargetEnemy(foe); if(t){ t.hp=0; log(`【${nm}】${CARDS[t.id].name}を破壊（HP無視）`,"fx"); } } break;
+    case"destroyTarget":   { const t=chosen||autoTargetEnemy(foe); if(t){ if(shieldBlocks(t)){ log(`【${nm}】${CARDS[t.id].name}はバリアで破壊を防いだ🛡`,"fx"); } else { t.hp=0; log(`【${nm}】${CARDS[t.id].name}を破壊（HP無視）`,"fx"); } } } break;
     case"bounceToHand":    { const t=chosen||autoTargetEnemy(foe); if(t){ const i=foe.board.indexOf(t); if(i>=0) foe.board.splice(i,1); foe.hand.push({id:t.id}); log(`【${nm}】${CARDS[t.id].name}を手札に戻す`,"fx"); } } break;
     case"bounceToDeck":    { const t=chosen||autoTargetEnemy(foe); if(t){ const i=foe.board.indexOf(t); if(i>=0) foe.board.splice(i,1); const pos=Math.floor(Math.random()*(foe.deck.length+1)); foe.deck.splice(pos,0,{id:t.id}); log(`【${nm}】${CARDS[t.id].name}を山札に戻す`,"fx"); } } break;
+    // ===== GR能力（管理者専用カード用）=====
+    case"borrowEnergy":    { me.energy=Math.min(CFG.energyCap,me.energy+amt); me.energyDebt=(me.energyDebt||0)+amt; log(`【${nm}】マナを${amt}前借り（次の自分のターンに返済）`,"fx"); } break;
+    case"sacrificeAlly":   { const t=chosen||me.board.filter(c=>c!==self).sort((a,b)=>(((CARDS[a.id]||{}).cost)||0)-(((CARDS[b.id]||{}).cost)||0))[0]; if(t){ t.hp=0; log(`【${nm}】${CARDS[t.id].name}を生贄に捧げた`,"fx"); } } break;
+    case"bounceAllyToHand":{ const t=chosen||self; if(t){ const i=me.board.indexOf(t); if(i>=0) me.board.splice(i,1); me.hand.push({id:t.id}); log(`【${nm}】${CARDS[t.id].name}を手札に戻した`,"fx"); } } break;
+    case"grantBarrier":    { const t=chosen||self||[...me.board].sort((a,b)=>eff(b)-eff(a))[0]; if(t){ t.barrier=true; log(`【${nm}】${CARDS[t.id].name}にバリア🛡を張った`,"fx"); } } break;
+    case"swapStats":       { const t=chosen||autoTargetEnemy(foe); if(t){ const a=t.atk+(t.buff||0), h=t.hp; t.atk=Math.max(0,h); t.buff=0; t.hp=Math.max(1,a); t.maxHp=Math.max(t.maxHp,t.hp); log(`【${nm}】${CARDS[t.id].name}の攻守を入れ替えた`,"fx"); } } break;
+    case"buffPerGrave":    { if(self){ const n=(me.grave||[]).length; const g=n*(amt||1000); self.atk+=g; self.maxHp+=g; self.hp+=g; log(`【${nm}】墓地${n}枚ぶん +${g}/+${g}`,"fx"); } } break;
   }
 }
 function reviveFrom(meKey,me,mode){ me.grave=me.grave||[]; if(!me.grave.length||me.board.length>=CFG.boardMax) return;
@@ -593,7 +739,6 @@ const ABILITY_LIB={
   draw1:{trigger:"summon",steps:[{then:{effect:"draw",amount:1}}]},
   rally:{trigger:"summon",steps:[{then:{effect:"buffAllyAtk",amount:1000}}]},
   healAll:{trigger:"summon",steps:[{then:{effect:"healAllAllies",amount:2000}}]},
-  token:{trigger:"summon",steps:[{then:{effect:"summonToken"}}]},
   deathBomb:{trigger:"death",steps:[{then:{effect:"damageAllEnemies",amount:2000}}]},
   deathDraw:{trigger:"death",steps:[{then:{effect:"draw",amount:1}}]},
   deathFace:{trigger:"death",steps:[{then:{effect:"damageFace",amount:3000}}]},
@@ -607,7 +752,8 @@ const ABILITY_LIB={
   freezeStrike:{trigger:"summon",steps:[{then:{effect:"freezeTarget"}}]},
   drainSummon:{trigger:"summon",steps:[{then:{effect:"drainEnergy",amount:2}}]},
 };
-function fireTrigger(card,meKey,trigger){ (card.abil||[]).forEach(key=>{ const lib=ABILITY_LIB[key]; if(lib&&lib.trigger===trigger) runAbility(lib,meKey,card,null); });
+function withAmount(lib,amt){ return {trigger:lib.trigger, usesDice:lib.usesDice, steps:(lib.steps||[]).map((st,i)=> i===0 ? {if:st.if, then:Object.assign({},st.then,{amount:amt})} : st )}; }
+function fireTrigger(card,meKey,trigger){ (card.abil||[]).forEach(key=>{ const lib=ABILITY_LIB[key]; if(lib&&lib.trigger===trigger){ const ov=((CARDS[card.id]||{}).abilVals||{})[key]; runAbility(ov!=null?withAmount(lib,ov):lib,meKey,card,null); } });
   const defT=CARDS[card.id]&&CARDS[card.id].triggers; if(Array.isArray(defT)) defT.forEach(tg=>{ if(tg&&tg.trigger===trigger&&Array.isArray(tg.steps)) runAbility({steps:tg.steps,usesDice:tg.usesDice},meKey,card,null); }); }
 /* 起動型能力の正規化（簡易形 {effect,value} も steps に変換）*/
 function normActivated(ab){ if(!ab) return null; if(ab.steps) return ab; const v=ab.value||0;
@@ -621,21 +767,23 @@ function normActivated(ab){ if(!ab) return null; if(ab.steps) return ab; const v
   return Object.assign({name:ab.name,cost:ab.cost,tapsAttack:ab.tapsAttack}, map[ab.effect]||{steps:[]}); }
 
 /* ===== 能力の説明テキスト（図鑑/詳細用） ===== */
+const TRIGGER_NAMES={summon:"召喚時",death:"死亡時",turnStart:"自分のターン開始時",turnEnd:"自分のターン終了時",attack:"攻撃した時",attacked:"攻撃された時",kill:"相手を倒した時",allyDeath:"味方が倒れた時"};
 const KW_DESC={"速攻":"召喚したターンから攻撃できる","守護":"これを先に倒すまで他や本体を攻撃できない","貫通":"相手キャラを倒した余りを相手本体へ","再生":"自分のターン開始時にHP全回復","二回攻撃":"1ターンに2回攻撃できる","攻撃不可":"自分から攻撃できない（守り・技専用）","帰還":"破壊されたら墓地でなく手札に戻る"};
-const ABIL_DESC={strike:"召喚時：最もATKの高い相手キャラに3000ダメージ",draw1:"召喚時：カードを1枚引く",rally:"召喚時：味方全体のATK+1000",healAll:"召喚時：味方全体のHPを2000回復",token:"召喚時：子分(1/1)を場に出す",deathBomb:"死亡時：相手キャラ全体に2000ダメージ",deathDraw:"死亡時：カードを1枚引く",deathFace:"死亡時：相手本体に3000ダメージ",grow:"ターン開始時：+1000/+1000",pingFace:"ターン開始時：相手本体に1000ダメージ",healTurn:"ターン開始時：味方全体のHP+1000",lifesteal:"攻撃時：与えたダメージ分あなたのライフ回復",drawAtk:"攻撃時：カードを1枚引く",manaRamp:"ターン開始時：エナジー+2（マナ加速）",lifeRegen:"ターン開始時：あなたのライフ+1000",freezeStrike:"召喚時：相手キャラ1体を足止め⛓",drainSummon:"召喚時：相手のエナジーを2削る"};
+const ABIL_DESC={strike:"召喚時：最もATKの高い相手キャラに3000ダメージ",draw1:"召喚時：カードを1枚引く",rally:"召喚時：味方全体のATK+1000",healAll:"召喚時：味方全体のHPを2000回復",deathBomb:"死亡時：相手キャラ全体に2000ダメージ",deathDraw:"死亡時：カードを1枚引く",deathFace:"死亡時：相手本体に3000ダメージ",grow:"ターン開始時：+1000/+1000",pingFace:"ターン開始時：相手本体に1000ダメージ",healTurn:"ターン開始時：味方全体のHP+1000",lifesteal:"攻撃時：与えたダメージ分あなたのライフ回復",drawAtk:"攻撃時：カードを1枚引く",manaRamp:"ターン開始時：エナジー+2（マナ加速）",lifeRegen:"ターン開始時：あなたのライフ+1000",freezeStrike:"召喚時：相手キャラ1体を足止め⛓",drainSummon:"召喚時：相手のエナジーを2削る"};
 function amtText(a){ return (typeof a==="string"&&a.includes("dice"))? a.replace(/dice/g,"出目") : a; }
 function stepText(st){ const t=st.then,a=amtText(t.amount); const cond=condText(st.if);
-  const m={damageFace:`相手本体に ${a} ダメージ`,damageTarget:`相手キャラ1体に ${a} ダメージ`,damageAllEnemies:`相手全体に ${a} ダメージ`,draw:`${a} 枚ドロー`,gainEnergy:`エナジー+${a}`,healLife:`あなたのライフを ${a} 回復`,freezeTarget:`相手キャラ1体を足止め（次の相手ターン動けない）`,freezeAll:`相手全体を足止め`,drainEnergy:`相手のエナジーを ${a} 削る`,buffSelf:`自身を +${a}/+${a}`,buffAllyAtk:`味方ATK+${a}`,healAlly:`味方1体を ${a} 回復`,healAllAllies:`味方全体を ${a} 回復`,summonToken:`子分(1/1)を召喚`,lifestealLast:`与ダメージ分ライフ回復`,reviveLast:`墓地から最近の味方を ${a} 体復活`,reviveStrongest:`墓地から最強の味方を ${a} 体復活`,reviveRandom:`墓地からランダムに ${a} 体復活`,sacrificeSelf:`自身を生贄に(墓地へ)`,destroyTarget:`相手キャラ1体を破壊（HP無視で墓地へ）`,bounceToHand:`相手キャラ1体を手札に戻す`,bounceToDeck:`相手キャラ1体を山札に戻す`};
-  return cond+(m[t.effect]||t.effect); }
+  const m={damageFace:`相手本体に ${a} ダメージ`,damageTarget:`相手キャラ1体に ${a} ダメージ`,damageAllEnemies:`相手全体に ${a} ダメージ`,draw:`${a} 枚ドロー`,gainEnergy:`エナジー+${a}`,healLife:`あなたのライフを ${a} 回復`,freezeTarget:`相手キャラ1体を足止め（次の相手ターン動けない）`,freezeAll:`相手全体を足止め`,drainEnergy:`相手のエナジーを ${a} 削る`,buffSelf:`自身を +${a}/+${a}`,buffAllyAtk:`味方全体のATK+${a}`,buffAtkTarget:`味方1体のATK+${a}`,debuffAtkTarget:`相手キャラ1体のATK−${a}`,debuffAtkAll:`相手全体のATK−${a}`,healAlly:`味方1体を ${a} 回復`,healAllAllies:`味方全体を ${a} 回復`,summonToken:`（効果なし）`,lifestealLast:`与ダメージ分ライフ回復`,reviveLast:`墓地から最近の味方を ${a} 体復活`,reviveStrongest:`墓地から最強の味方を ${a} 体復活`,reviveRandom:`墓地からランダムに ${a} 体復活`,sacrificeSelf:`自身を生贄に(墓地へ)`,destroyTarget:`相手キャラ1体を破壊（HP無視で墓地へ）`,bounceToHand:`相手キャラ1体を手札に戻す`,bounceToDeck:`相手キャラ1体を山札に戻す`,borrowEnergy:`マナを ${a} 前借りする（次の自分のターンに同じだけ返済）`,sacrificeAlly:`味方1体を生贄に捧げる（破壊）`,bounceAllyToHand:`味方1体を手札に戻す`,grantBarrier:`味方1体にバリアを張る（次の被ダメージ/破壊を1回無効）`,swapStats:`対象の攻撃力と体力を入れ替える`,buffPerGrave:`自分の墓地のカード1枚につき自身を +${a}/+${a}`};
+  const durs=["buffSelf","buffAllyAtk","buffAtkTarget","debuffAtkTarget","debuffAtkAll"]; const dt=durs.includes(t.effect)?(t.dur==="temp"?"（次の自分のターン開始まで）":"（永続）"):"";
+  return cond+(m[t.effect]||t.effect)+dt; }
 function describeActivated(raw){ const ab=normActivated(raw); if(!ab) return ""; const dice=ab.usesDice?"🎲サイコロを振り、":""; return `【技】${ab.name||""}（⚡${ab.cost}${ab.tapsAttack?"・使うとそのターン攻撃不可":""}）：${dice}`+(ab.steps||[]).map(stepText).join(" / "); }
 function describeCard(id){ const d=CARDS[id]; if(!d) return ""; let h=`<div style="font-weight:bold;font-size:16px;color:#ffd874">${d.name||""} <span style="color:#9aa6b8;font-size:11px">[${d.rarity||"N"}]</span></div>`;
   h+=`<div class="muted">${d.type==="char"?`コスト${d.cost}　⚔${effStat(id,d.atk)}　♥${effStat(id,d.hp)}`:`スキル・コスト${d.cost}`}</div>`;
   if(d.type==="char"){ const pct=Math.round((rarMult(id)-1)*100); if(pct>0) h+=`<div style="color:#7bff9b;font-size:12px">⭐ ${d.rarity||"N"} レア度ボーナス：基本値より約+${pct}%（同コストでも上位レアほど強い）</div>`; }
   if(d.txt) h+=`<div>${d.txt}</div>`;
   (d.kw||[]).forEach(k=>{ h+=`<div><b style="color:#ffd874">${k}</b>：${KW_DESC[k]||""}</div>`; });
-  (d.abil||[]).forEach(k=>{ if(ABIL_DESC[k]) h+=`<div><b style="color:#7bff9b">能力</b> ${ABIL_DESC[k]}</div>`; });
+  (d.abil||[]).forEach(k=>{ const lib=ABILITY_LIB[k]; if(lib){ const ov=(d.abilVals||{})[k]; const ab=ov!=null?withAmount(lib,ov):lib; const tn=TRIGGER_NAMES[lib.trigger]||lib.trigger; h+=`<div style="color:#7bff9b">【${tn}】${(ab.steps||[]).map(stepText).join(" / ")}</div>`; } else if(ABIL_DESC[k]) h+=`<div><b style="color:#7bff9b">能力</b> ${ABIL_DESC[k]}</div>`; });
   if(d.activated) h+=`<div style="color:#d9c7ff;margin-top:4px">${describeActivated(d.activated)}</div>`;
-  (d.triggers||[]).forEach(tg=>{ const tn={summon:"召喚時",death:"死亡時",turnStart:"ターン開始時",attack:"攻撃時"}[tg.trigger]||tg.trigger; h+=`<div style="color:#9ce0ff">【${tn}】${tg.usesDice?"🎲":""}${(tg.steps||[]).map(stepText).join(" / ")}</div>`; });
+  (d.triggers||[]).forEach(tg=>{ const tn=TRIGGER_NAMES[tg.trigger]||tg.trigger; h+=`<div style="color:#9ce0ff">【${tn}】${tg.usesDice?"🎲":""}${(tg.steps||[]).map(stepText).join(" / ")}</div>`; });
   if(!(d.kw||[]).length && !(d.abil||[]).length && !d.activated && !(d.triggers||[]).length && d.type==="char") h+=`<div class="muted">特殊能力なし</div>`;
   return h; }
 function showDetail(id){ $("detailArt").innerHTML=artHTML(id); $("detailBody").innerHTML=describeCard(id); $("detail").style.display="flex"; }
@@ -644,18 +792,23 @@ function findInst(u){ if(!G) return null; for(const k of ["p1","p2"]){ const f=G
 /* ===== 戦闘 ===== */
 const eff=c=>Math.max(0,c.atk+c.buff);
 const hasGuard=p=>p.board.some(c=>c.kw.includes("守護"));
+function shieldBlocks(c){ if(c&&c.barrier){ c.barrier=false; return true; } return false; }   // バリア：次の被ダメ/破壊を1回無効
 function cleanup(){ let ch=true; while(ch){ ch=false; ["p1","p2"].forEach(k=>{ const dead=G[k].board.filter(c=>c.hp<=0); if(dead.length){ ch=true; G[k].grave=G[k].grave||[];
+  const deadSet=new Set(dead.map(c=>c.uid));
   dead.forEach(c=>{ log(`${CARDS[c.id].name} 破壊`,"sys"); fireTrigger(c,k,"death");
     if(c.kw&&c.kw.includes("帰還")){ G[k].hand.push({id:c.id}); log(`${CARDS[c.id].name} は手札に戻った`,"fx"); }   // 帰還：墓地でなく手札へ
     else if(c.id!=="_token") G[k].grave.push({id:c.id}); });
-    G[k].board=G[k].board.filter(c=>c.hp>0); } }); } }
+    G[k].board=G[k].board.filter(c=>!deadSet.has(c.uid)); G[k].board.slice().forEach(sv=>fireTrigger(sv,k,"allyDeath")); } }); } }   // ★死亡判定したユニットはHPが戻っても確実に場から除去（分裂バグ修正）+味方死亡トリガー
 function checkWin(){ if(G.p2.life<=0) endGame("p1",""); else if(G.p1.life<=0) endGame("p2",""); }
 function attack(attacker,targetUid){ const me=act(), foe=opp(); if(attacker.attacksLeft<=0||attacker.summonSick) return; let fx=null;
   if(targetUid===null){ if(hasGuard(foe)) return; attacker._lastDmg=eff(attacker); foe.life-=eff(attacker); log(`${CARDS[attacker.id].name} が相手に${eff(attacker)}`,"me"); fx={au:attacker.uid,face:true,dmg:eff(attacker)}; }
   else{ const t=foe.board.find(c=>c.uid===targetUid); if(!t) return; if(hasGuard(foe)&&!t.kw.includes("守護")) return;
-    const a=eff(attacker),tk=eff(t),hb=t.hp; attacker._lastDmg=a; t.hp-=a; attacker.hp-=tk; log(`${CARDS[attacker.id].name}(${a}) ⚔ ${CARDS[t.id].name}(${tk})`,"me");
-    fx={tu:targetUid, au:attacker.uid, dmgT:a, dmgA:tk};
-    if(attacker.kw.includes("貫通")&&t.hp<=0){ const ov=a-hb; if(ov>0){ foe.life-=ov; log(`貫通${ov}`,"fx"); } } }
+    const a=eff(attacker),tk=eff(t),hb=t.hp; attacker._lastDmg=a;
+    const blkT=shieldBlocks(t); if(!blkT) t.hp-=a; const blkA=shieldBlocks(attacker); if(!blkA) attacker.hp-=tk;
+    log(`${CARDS[attacker.id].name}(${a}) ⚔ ${CARDS[t.id].name}(${tk})`+(blkT||blkA?" 🛡バリア":""),"me");
+    fx={tu:targetUid, au:attacker.uid, dmgT:blkT?0:a, dmgA:blkA?0:tk};
+    if(attacker.kw.includes("貫通")&&t.hp<=0){ const ov=a-hb; if(ov>0){ foe.life-=ov; log(`貫通${ov}`,"fx"); } }
+    if(t.hp>0) fireTrigger(t,other(G.turn),"attacked"); else fireTrigger(attacker,G.turn,"kill"); }
   attacker.attacksLeft--; fireTrigger(attacker,G.turn,"attack"); cleanup(); checkWin(); render(); combatFx(fx); if(online) pushState(); }
 function combatFx(fx){ if(!fx) return;
   lungeCard(fx.au);
@@ -670,6 +823,7 @@ function screenShake(){ document.body.classList.remove("shaking"); void document
 /* ===== ターン ===== */
 function startTurnLocal(){ if(G.over) return; const p=G[G.turn];
   p.energy=Math.min(CFG.energyCap, p.energy+CFG.energyIncome);     // ★貯金式：持ち越し＋収入
+  if(p.energyDebt){ const d=Math.min(p.energy,p.energyDebt); p.energy-=d; if(d>0) log(`⚡マナ前借りを返済 -${d}`,"fx"); p.energyDebt=0; }   // 前借り返済
   p.board.forEach(c=>{ c.summonSick=false; c.buff=0; c.usedSkill=false;
     if(c.frozen){ c.attacksLeft=0; c.frozen=false; }   // 足止め：このターンは攻撃不可→解凍
     else c.attacksLeft=c.kw.includes("攻撃不可")?0:(c.kw.includes("二回攻撃")?2:1);
@@ -678,7 +832,7 @@ function startTurnLocal(){ if(G.over) return; const p=G[G.turn];
   if(!G.over && !(G.turn==="p1" && !p.firstDone)) draw(G.turn,1);
   p.firstDone=true; selected=null; pending=null;
   if(!G.over) log((G.turn===myseat?"あなた":"あいて")+`のターン（⚡${p.energy}）`, G.turn===myseat?"me":"foe"); }
-function endTurn(){ if(G.over||(online&&G.turn!==myseat)) return; selected=null; pending=null; G.turn=other(G.turn); G.pendingStart=true; pushState(); render(); }
+function endTurn(){ if(G.over||(online&&G.turn!==myseat)) return; G[G.turn].board.slice().forEach(c=>fireTrigger(c,G.turn,"turnEnd")); cleanup(); checkWin(); if(G.over){ pushState(); render(); return; } selected=null; pending=null; G.turn=other(G.turn); G.pendingStart=true; pushState(); render(); }
 
 /* ===== 操作 ===== */
 function playCard(i){ const p=act(), card=p.hand[i], def=CARDS[card.id]; if(!def) return;
@@ -719,7 +873,7 @@ function showPopup(c,ab,canAttack){ const can=act().energy>=ab.cost && !c.usedSk
   $("popInner").onclick=(e)=>{ const a=e.target.dataset.a; if(!a) return; $("popup").style.display="none";
     if(a==="atk") selectAttacker(c); else if(a==="skill") startActivated(c,ab); }; }
 function startActivated(c,ab){ if(ab.needsTarget){ pending={kind:"activatedAlly",self:c}; // 回復は味方対象、ダメージは敵対象
-    pending.target = (ab.steps[0]&&ab.steps[0].then.effect==="healAlly")?"ally":"enemy"; setHint(`${ab.name}：対象選択`); render();
+    pending.target = (ab.steps[0]&&["healAlly","bounceAllyToHand","grantBarrier","sacrificeAlly","buffAtkTarget"].includes(ab.steps[0].then.effect))?"ally":"enemy"; setHint(`${ab.name}：対象選択`); render();
     if(pending.target==="enemy"){ pending.kind="activatedEnemy"; } return; }
   doActivated(c,null); }
 function doActivated(self,target){ const me=act(); const ab=normActivated(CARDS[self.id].activated); if(me.energy<ab.cost) return;
@@ -738,12 +892,12 @@ const bottomSeat=()=>online?myseat:G.turn;
 const topSeat=()=>bottomSeat()==="p1"?"p2":"p1";
 function skillMark(c){ const ab=CARDS[c.id]&&CARDS[c.id].activated; return ab?`<div class="skillmark" title="${(ab.name||'技')}（⚡${ab.cost}）">✦${ab.cost}</div>`:""; }
 function cardBg(id){ const d=CARDS[id]||{}; const rar=d.rarity||"N"; if(d.img) return `<div class="cbg" style="background-image:url('${d.img}')"></div>`; return `<div class="cbg r${rar}"><span class="bgemoji">${d.art||"❓"}</span></div>`; }
-function cardHTML(c,ctx){ const def=CARDS[c.id]||{}; const cls=["card","rar"+(def.rarity||"N")]; if(def.type==="skill") cls.push("skill"); if(!seenUids.has(c.uid)) cls.push("enter");
+function cardHTML(c,ctx){ const def=CARDS[c.id]||{}; const cls=["card","rar"+(def.rarity||"N")]; if(def.type==="skill") cls.push("skill"); if(c.barrier) cls.push("barriered"); if(!seenUids.has(c.uid)) cls.push("enter");
   if(ctx==="act"){ if(!c.summonSick&&c.attacksLeft>0&&(!online||G.turn===myseat)) cls.push("canact"); if(c.summonSick) cls.push("sick"); if(selected&&selected.uid===c.uid) cls.push("selected"); if(c.kw.includes("守護")) cls.push("guard"); if(pending&&(pending.target==="ally"||pending.kind==="activatedAlly")) cls.push("target"); }
   if(ctx==="opp"){ if(c.kw.includes("守護")) cls.push("guard"); if((selected&&selected.kind==="attacker")||(pending&&(pending.target==="enemy"||pending.kind==="activatedEnemy"))){ if(!(selected&&hasGuard(opp())&&!c.kw.includes("守護"))) cls.push("target"); } }
   const atk=c.atk+(c.buff||0); const kw=c.kw&&c.kw.length?`<div class="kw">${c.kw.join("・")}</div>`:"";
   if(c.frozen) cls.push("frozen");
-  return `<div class="${cls.join(' ')}" data-uid="${c.uid}" data-ctx="${ctx}">${cardBg(c.id)}<div class="cost">${def.cost}</div>${skillMark(c)}${c.frozen?'<div class="frozenmark">⛓</div>':''}<div class="namebar">${def.name||""}</div>${kw}<div class="stats"><span class="atk">⚔${atk}</span><span class="hp">♥${c.hp}</span></div></div>`; }
+  return `<div class="${cls.join(' ')}" data-uid="${c.uid}" data-ctx="${ctx}">${cardBg(c.id)}<div class="cost">${def.cost}</div>${skillMark(c)}${c.frozen?'<div class="frozenmark">⛓</div>':''}${c.barrier?'<div class="barriermark">🛡</div>':''}<div class="namebar">${def.name||""}</div>${kw}<div class="stats"><span class="atk">⚔${atk}</span><span class="hp">♥${c.hp}</span></div></div>`; }
 function handHTML(card,i){ const def=CARDS[card.id]||{}; const can=act().energy>=def.cost; const cls=["card","rar"+(def.rarity||"N")]; if(def.type==="skill") cls.push("skill");
   const kw=def.kw&&def.kw.length?`<div class="kw">${def.kw.join("・")}</div>`:"";
   const stx=def.type==="char"?`<div class="stats"><span class="atk">⚔${effStat(card.id,def.atk)}</span><span class="hp">♥${effStat(card.id,def.hp)}</span></div>`:`<div class="tx">${def.txt||""}</div>`;
@@ -826,22 +980,22 @@ function startAsHost(joinerDeck){ uid=1; gameFinished=false; online=true;
 function showGame(){ resetFx(); ["login","menu","result"].forEach(id=>$(id).style.display="none"); $("game").style.display="block"; }
 
 /* ===== ガチャ / デッキ ===== */
-const RAR={N:{c:"#9aa6b8",r:60},R:{c:"#5fa8ff",r:28},SR:{c:"#c08bff",r:10},SSR:{c:"#ffcf5a",r:2}};
+const RAR={N:{c:"#9aa6b8",r:60},R:{c:"#5fa8ff",r:28},SR:{c:"#c08bff",r:10},SSR:{c:"#ffcf5a",r:2},GR:{c:"#ff7be0",r:0}};
 function miniHTML(id,extra=""){ const d=CARDS[id]||{}; const rar=d.rarity||"N"; const rc=(RAR[rar]||RAR.N).c;
   const st=d.type==="char"?`⚔${effStat(id,d.atk)} ♥${effStat(id,d.hp)}・C${d.cost}`:`スキル・C${d.cost}`;
   return `<div class="mini" data-info="${id}" style="border-color:${rc}"><div class="rr" style="background:${rc}">${rar}</div><div class="mart">${artHTML(id)}</div><div class="mn">${d.name||""}</div><div class="ms">${st}</div>${extra}</div>`; }
 function isPlayable(id){ const s=CARDS[id]&&CARDS[id].status; return !s||s==="approved"; }  // 公式/承認済みのみ対戦・ガチャ可
 function gachaPool(){ return Object.keys(CARDS).filter(id=>id[0]!=="_"&&CARDS[id].rarity&&isPlayable(id)); }
 /* ===== ガチャ（複数バナー対応：config/gachas）===== */
-const DEFAULT_GACHA={id:"normal",name:"通常ガチャ",emoji:"🎁",color:"#9c7a3a",desc:"全カードから排出",costSingle:100,cost10:900,rates:{SSR:2,SR:10,R:28,N:60},pool:[]};
+const DEFAULT_GACHA={id:"normal",name:"通常ガチャ",emoji:"🎁",color:"#9c7a3a",desc:"全カードから排出",costSingle:100,cost10:900,rates:{GR:0,SSR:2,SR:10,R:28,N:60},pool:[]};
 let GACHAS=[], curGacha=null;
 async function loadGachas(){ try{ const s=await getDoc(doc(db,"config","gachas")); const list=(s.exists()&&Array.isArray(s.data().list))?s.data().list:null; GACHAS=(list&&list.length)?list:[DEFAULT_GACHA]; }catch(e){ GACHAS=[DEFAULT_GACHA]; }
   GACHAS=GACHAS.map(g=>Object.assign({},DEFAULT_GACHA,g,{rates:Object.assign({},DEFAULT_GACHA.rates,g.rates||{})})); }
 function gachaList(){ return (GACHAS&&GACHAS.length)?GACHAS:[DEFAULT_GACHA]; }
 function gachaCands(g,rar){ if(g.pool&&g.pool.length) return g.pool.filter(id=>CARDS[id]&&CARDS[id].rarity===rar&&isPlayable(id)); return gachaPool().filter(id=>CARDS[id].rarity===rar); }
 function rollOne(g){ g=g||curGacha||DEFAULT_GACHA; const rates=g.rates||DEFAULT_GACHA.rates; const r=Math.random()*100;
-  let acc=0,rar="N"; for(const k of ["SSR","SR","R","N"]){ acc+=rates[k]||0; if(r<acc){ rar=k; break; } }
-  let cand=gachaCands(g,rar); const down={SSR:"SR",SR:"R",R:"N"};
+  let acc=0,rar="N"; for(const k of ["GR","SSR","SR","R","N"]){ acc+=rates[k]||0; if(r<acc){ rar=k; break; } }
+  let cand=gachaCands(g,rar); const down={GR:"SSR",SSR:"SR",SR:"R",R:"N"};
   while(!cand.length&&down[rar]){ rar=down[rar]; cand=gachaCands(g,rar); }
   if(!cand.length){ cand=(g.pool&&g.pool.length)?g.pool.filter(id=>CARDS[id]&&isPlayable(id)):gachaPool(); }
   if(!cand.length) return null;
@@ -851,20 +1005,20 @@ function renderGachaBanners(){ const list=gachaList();
     return `<div class="gbanner" data-gi="${i}" style="border-color:${g.color||'#9c7a3a'}">${bg}<div class="grates">SSR ${g.rates.SSR}%</div><div class="gov"><div class="gname">${g.emoji||""} ${g.name||"ガチャ"}</div><div class="gdesc">${g.desc||""}</div><span class="gcost">単発 💰${g.costSingle} ／ 10連 💰${g.cost10}</span></div></div>`; }).join(""); }
 function openGacha(g){ curGacha=g; $("gachaBanners").style.display="none"; $("gachaPlay").style.display="flex";
   $("gachaTitle").textContent=(g.emoji||"")+" "+(g.name||"ガチャ"); $("gacha1").textContent=`単発(${g.costSingle})`; $("gacha10").textContent=`10連(${g.cost10})`;
-  $("gachaRates").textContent=`SSR ${g.rates.SSR}% / SR ${g.rates.SR}% / R ${g.rates.R}% / N ${g.rates.N}%`; $("gachaResult").innerHTML=""; $("gachaCoins").textContent="💰 "+coins; }
+  $("gachaRates").textContent=(g.rates.GR?`GR ${g.rates.GR}% / `:"")+`SSR ${g.rates.SSR}% / SR ${g.rates.SR}% / R ${g.rates.R}% / N ${g.rates.N}%`; $("gachaResult").innerHTML=""; $("gachaCoins").textContent="💰 "+coins; }
 function closeGachaPlay(){ curGacha=null; $("gachaPlay").style.display="none"; $("gachaBanners").style.display="flex"; }
 function pull(n){ const g=curGacha; if(!g) return; const cost=n===10?g.cost10:g.costSingle;
   if(coins<cost){ $("gachaResult").innerHTML='<div style="color:#ff8a8a">コインが足りません</div>'; return; }
   coins-=cost; const res=[]; for(let i=0;i<n;i++){ const id=rollOne(g); if(id) res.push(id); } saveUser(); $("gachaCoins").textContent="💰 "+coins; updateCoinUI();
   if(!res.length){ $("gachaResult").innerHTML='<div class="muted">排出できるカードがありません（管理者がこのガチャに封入設定してください）</div>'; return; }
-  const ord={SSR:0,SR:1,R:2,N:3}; res.sort((a,b)=>ord[CARDS[a].rarity]-ord[CARDS[b].rarity]); $("gachaResult").innerHTML=res.map(id=>miniHTML(id)).join(""); }
+  const ord={GR:-1,SSR:0,SR:1,R:2,N:3}; res.sort((a,b)=>ord[CARDS[a].rarity]-ord[CARDS[b].rarity]); $("gachaResult").innerHTML=res.map(id=>miniHTML(id)).join(""); }
 const deckCount=id=>(decks.main||[]).filter(x=>x===id).length;
 function renderDeck(){ const n=(decks.main||[]).length, need=CFG.deckSize; const el=$("deckCount");
   if(n>=need) el.innerHTML=`<div style="color:#7bff9b;font-size:20px;font-weight:bold">デッキ ${n} / ${need} 枚 ✅ OK</div>`;
   else el.innerHTML=`<div style="color:#ffd874;font-size:20px;font-weight:bold">デッキ ${n} / ${need} 枚</div><div style="color:#ff8a8a;font-size:13px">⚠ あと ${need-n} 枚たりません（40枚未満は対戦時に所持カードで自動補充されます）</div>`;
   const btn=$("deckClose"); if(btn){ btn.disabled=n<need; btn.textContent=n>=need?"保存して戻る ✅":`あと ${need-n} 枚で完成`; }
   const owned=Object.keys(collection_).filter(id=>collection_[id]>0&&CARDS[id]&&id[0]!=="_");
-  const ord={SSR:0,SR:1,R:2,N:3}; owned.sort((a,b)=>(ord[CARDS[a].rarity]??9)-(ord[CARDS[b].rarity]??9)||CARDS[a].cost-CARDS[b].cost);
+  const ord={GR:-1,SSR:0,SR:1,R:2,N:3}; owned.sort((a,b)=>(ord[CARDS[a].rarity]??9)-(ord[CARDS[b].rarity]??9)||CARDS[a].cost-CARDS[b].cost);
   $("deckGrid").innerHTML=owned.map(id=>{ const ind=deckCount(id);
     return miniHTML(id,`<div class="deckctl"><button data-dm="${id}">−</button><span style="font-size:9px">${ind}/${CFG.maxCopies}</span><button data-dp="${id}">＋</button></div>`); }).join(""); }
 function addDeck(id){ if((decks.main||[]).length>=CFG.deckSize) return; if(deckCount(id)>=CFG.maxCopies) return; if(deckCount(id)>=(collection_[id]||0)) return; decks.main=decks.main||[]; decks.main.push(id); saveUser(); }
@@ -893,7 +1047,7 @@ $("gachaUI").addEventListener("click",e=>{ const info=e.target.closest("[data-in
 // 図鑑
 $("mDex").onclick=()=>{ const total=Object.keys(CARDS).filter(id=>id[0]!=="_").length;
   const ids=Object.keys(CARDS).filter(id=>id[0]!=="_" && (collection_[id]||0)>0);   // 入手済みのみ
-  const ord={SSR:0,SR:1,R:2,N:3}; ids.sort((a,b)=>(ord[CARDS[a].rarity]??9)-(ord[CARDS[b].rarity]??9)||(CARDS[a].cost-CARDS[b].cost));
+  const ord={GR:-1,SSR:0,SR:1,R:2,N:3}; ids.sort((a,b)=>(ord[CARDS[a].rarity]??9)-(ord[CARDS[b].rarity]??9)||(CARDS[a].cost-CARDS[b].cost));
   $("dexGrid").innerHTML = ids.length ? ids.map(id=>miniHTML(id,`<div class="ms" style="color:#9aa6b8">所持 ${collection_[id]}</div>`)).join("") : `<div class="muted">まだカードを持っていません。ガチャで集めよう！</div>`;
   document.querySelector("#dex h1").textContent=`📖 図鑑（${ids.length} / ${total}）`;
   $("dex").style.display="flex"; };
@@ -925,7 +1079,7 @@ function renderMarket(){ const uid=auth.currentUser.uid; updateCoinUI(); $("mark
   let sale=listings.filter(l=>l.status!=="sold");
   const q=(($("mkSearch")&&$("mkSearch").value)||"").trim(); if(q) sale=sale.filter(l=>(l.name||"").includes(q));
   if(mkRar!=="all") sale=sale.filter(l=>((CARDS[l.cardId]&&CARDS[l.cardId].rarity)||"N")===mkRar);
-  const sort=($("mkSort")&&$("mkSort").value)||"new"; const ord={SSR:0,SR:1,R:2,N:3};
+  const sort=($("mkSort")&&$("mkSort").value)||"new"; const ord={GR:-1,SSR:0,SR:1,R:2,N:3};
   sale.sort((a,b)=>{ if(sort==="priceA") return a.price-b.price; if(sort==="priceD") return b.price-a.price;
     if(sort==="rar") return (ord[(CARDS[a.cardId]||{}).rarity]??9)-(ord[(CARDS[b.cardId]||{}).rarity]??9); return (b.ts||0)-(a.ts||0); });
   $("marketGrid").innerHTML = sale.length? sale.map(l=>{ const own=l.sellerId===uid;
@@ -959,7 +1113,7 @@ function rarFromCost(c){ return c<=2?"N":c<=4?"R":c<=6?"SR":"SSR"; }
 function compressImage(file){ return new Promise(res=>{ const r=new FileReader(); r.onload=()=>{ const im=new Image(); im.onload=()=>{ const max=400,s=Math.min(1,max/im.width); const w=Math.round(im.width*s),h=Math.round(im.height*s); const cv=document.createElement("canvas"); cv.width=w; cv.height=h; cv.getContext("2d").drawImage(im,0,0,w,h); res(cv.toDataURL("image/webp",0.7)); }; im.src=r.result; }; r.readAsDataURL(file); }); }
 let subTrigs=[];
 const SUB_TRIGS=[["summon","召喚した時"],["death","やられた時"],["turnStart","自分のターン開始時"],["attack","攻撃した時"]];
-const SUB_EFF=[["damageFace","相手プレイヤーにダメージ",1],["damageTarget","相手キャラ1体にダメージ",1],["damageAllEnemies","相手全体にダメージ",1],["destroyTarget","相手キャラ1体を破壊(HP無視)",0],["bounceToHand","相手キャラ1体を手札に戻す",0],["bounceToDeck","相手キャラ1体を山札に戻す",0],["freezeTarget","相手キャラ1体を足止め",0],["draw","カードを引く",1],["healLife","自分のライフを回復",1],["healAllAllies","味方全体を回復",1],["buffSelf","自分を強化(+x/+x)",1],["gainEnergy","エナジー獲得",1],["summonToken","子分(1/1)を出す",0]];
+const SUB_EFF=[["damageFace","相手プレイヤーにダメージ",1],["damageTarget","相手キャラ1体にダメージ",1],["damageAllEnemies","相手全体にダメージ",1],["destroyTarget","相手キャラ1体を破壊(HP無視)",0],["bounceToHand","相手キャラ1体を手札に戻す",0],["bounceToDeck","相手キャラ1体を山札に戻す",0],["freezeTarget","相手キャラ1体を足止め",0],["draw","カードを引く",1],["healLife","自分のライフを回復",1],["healAllAllies","味方全体を回復",1],["buffSelf","自分を強化(+x/+x)",1],["gainEnergy","エナジー獲得",1]];
 const effNeedsVal=e=>{ const f=SUB_EFF.find(x=>x[0]===e); return f?f[2]:1; };
 function renderSubTrigs(){ $("subTrigList").innerHTML=subTrigs.map((t,i)=>{ const tg=SUB_TRIGS.map(([v,l])=>`<option value="${v}" ${t.trigger===v?"selected":""}>${l}</option>`).join(""); const ef=SUB_EFF.map(([v,l])=>`<option value="${v}" ${t.effect===v?"selected":""}>${l}</option>`).join(""); const nv=effNeedsVal(t.effect);
   return `<div style="background:#0d1320;border:1px solid #3a2e1a;border-radius:8px;padding:6px;margin-top:4px"><div class="row"><select data-si="${i}" data-sf="trigger" style="flex:1">${tg}</select></div><div class="row" style="margin-top:4px"><select data-si="${i}" data-sf="effect" style="flex:1">${ef}</select><input type="number" data-si="${i}" data-sf="value" value="${t.value??3000}" style="${nv?'width:84px':'display:none'}"></div><button class="red" data-sdel="${i}" style="padding:2px 8px;font-size:11px;margin-top:4px">削除</button></div>`; }).join(""); }
@@ -1048,12 +1202,12 @@ $("actHand").addEventListener("pointercancel",(e)=>{ if(drag){ drag.el.classList
 /* ===== 追加機能：レア度補正 / タブナビ / スロット / 配線 ============= */
 /* ===================================================================== */
 /* レア度パワーバランス（保存ATK/HPは不変。同コストでも上位レアほど強い） */
-const RARITY_MULT={N:1, R:1.10, SR:1.22, SSR:1.38};
+const RARITY_MULT={N:1, R:1.10, SR:1.22, SSR:1.38, GR:1.55};
 function rarMult(id){ const r=(CARDS[id]&&CARDS[id].rarity)||"N"; return RARITY_MULT[r]||1; }
 function effStat(id,base){ base=base||0; return Math.round(base*rarMult(id)/100)*100; }
 /* カード説明の条件文を自然な日本語に */
 const COND_DESC={ "dice>=":v=>"出目が"+v+"以上なら ", "dice<=":v=>"出目が"+v+"以下なら ", "dice==":v=>"出目が"+v+"なら ",
-  "enemyHasChar":()=>"相手にキャラがいる時は ", "selfDamaged":()=>"自分が傷ついている時は ", "boardSpace":()=>"場に空きがある時は " };
+  "enemyHasChar":()=>"相手にキャラがいる時は ", "selfDamaged":()=>"自分が傷ついている時は ", "boardSpace":()=>"場に空きがある時は ", "graveMin":v=>"自分の墓地が"+v+"枚以上なら " };
 function condText(cond){ if(!cond||!cond.type||cond.type==="always") return ""; const f=COND_DESC[cond.type]; return f? f(cond.value!=null?cond.value:"") : ""; }
 function updateCoinUI(){ const e=$("coinShow"); if(e) e.textContent="💰 "+coins; }
 
@@ -1116,6 +1270,46 @@ $("betRow").addEventListener("click",e=>{ const b=e.target.closest("[data-bet]")
 
 /* 画像の右クリック/長押し保存メニューを無効化（ゲームっぽく）*/
 document.addEventListener("contextmenu",e=>{ if(e.target&&e.target.tagName==="IMG") e.preventDefault(); });
+
+
+/* ===================================================================== */
+/* ===== ✨ ビジュアル演出（既存ロジック非干渉・追加のみ）============== */
+/* ===================================================================== */
+/* 3Dチルト＆ホロ反射：カードにポインタを乗せると傾く。ドラッグ中は無効。 */
+(function(){
+  let raf=null, cur=null, lx=0, ly=0;
+  function apply(){ raf=null; const card=cur; if(!card) return; const r=card.getBoundingClientRect(); if(!r.width) return;
+    const px=(lx-r.left)/r.width-.5, py=(ly-r.top)/r.height-.5;
+    card.style.setProperty('--tx',(px*15).toFixed(1)+'deg');
+    card.style.setProperty('--ty',(-py*15).toFixed(1)+'deg');
+    card.style.setProperty('--sx',((px+.5)*100).toFixed(0)+'%');
+    card.style.setProperty('--sy',((py+.5)*100).toFixed(0)+'%'); }
+  function reset(c){ if(!c) return; c.style.setProperty('--tx','0deg'); c.style.setProperty('--ty','0deg'); c.style.removeProperty('--sx'); c.style.removeProperty('--sy'); }
+  document.addEventListener('pointermove',function(e){
+    if(typeof drag!=='undefined' && drag) return;                 // 既存のドラッグ処理中は触らない
+    const card=e.target.closest && e.target.closest('.card');
+    if(card!==cur){ reset(cur); cur=card; }
+    if(!card) return; lx=e.clientX; ly=e.clientY; if(!raf) raf=requestAnimationFrame(apply);
+  },{passive:true});
+  document.addEventListener('pointerout',function(e){ const card=e.target.closest && e.target.closest('.card'); if(card){ reset(card); if(card===cur) cur=null; } },{passive:true});
+})();
+
+/* 破壊エフェクト：盤面からカードが消えた瞬間に衝撃波＋粒子を出す */
+(function(){
+  if(!('MutationObserver' in window)) return;
+  const rectMap=new Map();
+  function track(){ try{ document.querySelectorAll('#actBoard .card[data-uid],#oppBoard .card[data-uid]').forEach(el=>{ const r=el.getBoundingClientRect(); if(r.width) rectMap.set(el.dataset.uid,{x:r.left+r.width/2,y:r.top+r.height/2}); }); }catch(_){}
+    requestAnimationFrame(track); }
+  requestAnimationFrame(track);
+  function burst(x,y){ const g=document.getElementById('game'); if(!g||g.style.display==='none') return;
+    const ring=document.createElement('div'); ring.className='death-ring'; ring.style.left=x+'px'; ring.style.top=y+'px'; document.body.appendChild(ring); setTimeout(()=>ring.remove(),640);
+    for(let i=0;i<8;i++){ const p=document.createElement('div'); p.className='death-p'; const ang=(Math.PI*2*i/8)+Math.random()*.6, d=42+Math.random()*42;
+      p.style.left=x+'px'; p.style.top=y+'px'; p.style.setProperty('--dx',(Math.cos(ang)*d).toFixed(0)+'px'); p.style.setProperty('--dy',(Math.sin(ang)*d).toFixed(0)+'px'); document.body.appendChild(p); setTimeout(()=>p.remove(),640); } }
+  const obs=new MutationObserver(muts=>{ let present=new Set();
+    try{ document.querySelectorAll('#actBoard .card[data-uid],#oppBoard .card[data-uid]').forEach(el=>present.add(el.dataset.uid)); }catch(_){}
+    muts.forEach(m=>m.removedNodes.forEach(n=>{ if(n.nodeType===1 && n.dataset && n.dataset.uid && !present.has(n.dataset.uid)){ const pp=rectMap.get(n.dataset.uid); if(pp) burst(pp.x,pp.y); rectMap.delete(n.dataset.uid); } })); });
+  ['actBoard','oppBoard'].forEach(id=>{ const el=document.getElementById(id); if(el) obs.observe(el,{childList:true}); });
+})();
 
 </script>
 </body>
